@@ -22,7 +22,7 @@ export function AuthProvider({ children }) {
     try {
       await api.post("/auth/logout");
     } catch (error) {
-      // chiar dacă pică request-ul, se goleste user-ul local pentru a preveni situația în care rămâne logat după ce a dat logout
+      // chiar dacă pică request-ul, golim user-ul local
     } finally {
       setUser(null);
     }

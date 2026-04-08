@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 
 function App() {
   return (
@@ -8,10 +9,7 @@ function App() {
       <main>
         <Outlet />
       </main>
-
-      <footer className="border-t border-slate-800/80 bg-slate-950/70 py-4 text-center text-sm text-slate-400">
-        © 2026 ConfigEXP - Sistem configurare PC
-      </footer>
+      <Footer />
     </div>
   );
 }

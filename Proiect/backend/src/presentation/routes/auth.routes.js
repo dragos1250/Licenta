@@ -1,5 +1,4 @@
 import { Router } from "express";
-
 import { prisma } from "../../data/prismaClient.js";
 import { AuthRepository } from "../../data/repositories/auth.repository.js";
 import { AuthService } from "../../business/services/auth.service.js";

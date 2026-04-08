@@ -51,6 +51,11 @@ export default function Login() {
     return error?.response?.data?.error || "A apărut o eroare.";
   };
 
+  const getRedirectTo = () => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("redirect") || "/";
+  };
+
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
@@ -66,7 +71,7 @@ export default function Login() {
       await refreshAuth();
 
       setSuccessMsg("Autentificare reușită!");
-      navigate("/");
+      navigate(getRedirectTo());
     } catch (error) {
       setErrorMsg(getApiErrorMessage(error));
     } finally {
@@ -96,7 +101,7 @@ export default function Login() {
       await refreshAuth();
 
       setSuccessMsg("Cont creat cu succes! Ești autentificat.");
-      navigate("/");
+      navigate(getRedirectTo());
     } catch (error) {
       setErrorMsg(getApiErrorMessage(error));
     } finally {

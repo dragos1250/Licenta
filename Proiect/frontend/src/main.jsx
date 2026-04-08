@@ -10,6 +10,16 @@ import { AuthProvider } from "./context/AuthContext";
 import App from "./App.jsx";
 import Home from "./pages/Home.jsx";
 import Login from "./pages/Login.jsx";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import Account from "./pages/Account.jsx";
+import Cart from "./pages/Cart.jsx";
+import Components from "./pages/Components.jsx";
+import Wishlist from "./pages/Wishlist.jsx";
+import Configurator from "./pages/Configurator.jsx";
+import Checkout from "./pages/Checkout.jsx";
+import InfoPage from "./pages/InfoPage.jsx";
+import ProductDetail from "./pages/ProductDetail.jsx";
+import AdminDashboard from "./pages/AdminDashboard.jsx";
 
 function PlaceholderPage({ title }) {
   return (
@@ -32,15 +42,20 @@ const router = createBrowserRouter([
       { index: true, element: <Home /> },
       { path: "login", element: <Login /> },
 
-      { path: "configurator", element: <PlaceholderPage title="Configurator PC" /> },
+      { path: "configurator", element: <Configurator /> },
       { path: "ai-configurator", element: <PlaceholderPage title="AI Configurator" /> },
 
-      { path: "components", element: <PlaceholderPage title="Componente" /> },
-      { path: "components/*", element: <PlaceholderPage title="Componente" /> },
+      { path: "components", element: <Components /> },
+      { path: "components/:category", element: <Components /> },
 
-      { path: "wishlist", element: <PlaceholderPage title="Wishlist" /> },
-      { path: "cart", element: <PlaceholderPage title="Coș" /> },
-      { path: "account", element: <PlaceholderPage title="Cont" /> },
+      { path: "wishlist", element: (<ProtectedRoute><Wishlist /></ProtectedRoute>),},
+      { path: "cart", element: <Cart /> },
+      { path: "account", element: (<ProtectedRoute><Account /></ProtectedRoute>),},
+      { path: "checkout", element: <Checkout /> },
+      { path: "info", element: <InfoPage /> },
+      { path: "products/:id", element: <ProductDetail /> },
+      { path: "admin", element: (<ProtectedRoute><AdminDashboard /></ProtectedRoute>),},
+
     ],
   },
 ]);
