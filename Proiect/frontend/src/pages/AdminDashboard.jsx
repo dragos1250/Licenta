@@ -1,6 +1,5 @@
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   LineChart,
   Line,
@@ -29,11 +28,23 @@ import {
   Box,
   Cpu,
   Boxes,
-  Settings,
   Activity,
   ChevronRight,
   Shield,
   RefreshCw,
+  ReceiptText,
+  CalendarDays,
+  Truck,
+  CreditCard,
+  User,
+  Save,
+  Plus,
+  Mail,
+  Phone,
+  Tag,
+  Image as ImageIcon,
+  MessageSquare,
+  Send,
 } from "lucide-react";
 import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
@@ -60,11 +71,13 @@ function Button({
       "border border-slate-600 text-slate-300 hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400",
     danger:
       "border border-red-500/30 text-red-400 hover:border-red-500 hover:bg-red-500/10",
+    ghost:
+      "text-slate-300 hover:bg-slate-800 hover:text-white",
   };
 
   return (
     <button
-      className={`${base} ${sizes[size]} ${variants[variant]} ${className}`}
+      className={`${base} ${sizes[size]} ${variants[variant] || variants.solid} ${className}`}
       {...props}
     >
       {children}
@@ -99,6 +112,71 @@ function TabButton({ active, icon: Icon, children, onClick }) {
   );
 }
 
+function Modal({ title, subtitle, children, onClose, maxWidth = "max-w-4xl" }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+      <div
+        className={`relative max-h-[92vh] w-full ${maxWidth} overflow-y-auto rounded-2xl border border-slate-700/60 bg-slate-950/95 p-6 shadow-2xl backdrop-blur-xl`}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+        <div className="mb-6 pr-10">
+          <h3 className="text-2xl font-bold text-white">{title}</h3>
+          {subtitle && <p className="mt-1 text-sm text-slate-400">{subtitle}</p>}
+        </div>
+
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium text-slate-400">
+        {label}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+function TextInput({ className = "", ...props }) {
+  return (
+    <input
+      className={`w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none ${className}`}
+      {...props}
+    />
+  );
+}
+
+function TextArea({ className = "", ...props }) {
+  return (
+    <textarea
+      className={`w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none ${className}`}
+      {...props}
+    />
+  );
+}
+
+function SelectInput({ className = "", children, ...props }) {
+  return (
+    <select
+      className={`w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none ${className}`}
+      {...props}
+    >
+      {children}
+    </select>
+  );
+}
+
 function formatRon(value) {
   return Number(value || 0).toLocaleString("ro-RO");
 }
@@ -113,6 +191,21 @@ function formatDateRo(value) {
     day: "numeric",
     month: "short",
     year: "numeric",
+  });
+}
+
+function formatDateTimeRo(value) {
+  if (!value) return "—";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return date.toLocaleString("ro-RO", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -141,6 +234,11 @@ function pickArray(data, keys = []) {
 }
 
 function hasAdminRole(source) {
+  const directRoles = Array.isArray(source?.roles) ? source.roles : [];
+  if (directRoles.some((role) => String(role).trim().toLowerCase() === "admin")) {
+    return true;
+  }
+
   const roles = Array.isArray(source?.userRoles) ? source.userRoles : [];
 
   return roles.some((userRole) => {
@@ -155,6 +253,11 @@ function hasAdminRole(source) {
 }
 
 function getPrimaryRoleLabel(user) {
+  const directRoles = Array.isArray(user?.roles) ? user.roles : [];
+  if (directRoles.length > 0) {
+    return String(directRoles[0] || "client").trim() || "client";
+  }
+
   const roles = Array.isArray(user?.userRoles) ? user.userRoles : [];
   const firstRole =
     roles[0]?.role?.name || roles[0]?.name || roles[0]?.roleName || "client";
@@ -185,6 +288,8 @@ function getOrderStatusLabel(status) {
   switch (String(status || "").toUpperCase()) {
     case "PENDING":
       return "În așteptare";
+    case "PAID":
+      return "Plătită";
     case "PROCESSING":
       return "Procesare";
     case "SHIPPED":
@@ -193,8 +298,6 @@ function getOrderStatusLabel(status) {
       return "Livrată";
     case "CANCELED":
       return "Anulată";
-    case "PAID":
-      return "Plătită";
     default:
       return "Necunoscut";
   }
@@ -251,21 +354,117 @@ function getProductStatusLabel(status) {
   }
 }
 
+function shippingMethodLabel(method) {
+  switch (method) {
+    case "COURIER_STANDARD":
+      return "Curier standard";
+    case "COURIER_EXPRESS":
+      return "Curier expres";
+    case "EASYBOX":
+      return "EasyBox";
+    default:
+      return "—";
+  }
+}
+
+function paymentMethodLabel(method) {
+  switch (method) {
+    case "CARD":
+      return "Card";
+    case "CASH_ON_DELIVERY":
+      return "Ramburs";
+    default:
+      return "—";
+  }
+}
+
+const emptyOrderEditForm = {
+  status: "PENDING",
+  customerName: "",
+  customerEmail: "",
+  customerPhone: "",
+  shippingMethod: "COURIER_STANDARD",
+  paymentMethod: "CARD",
+  shippingCounty: "",
+  shippingCity: "",
+  shippingStreet: "",
+  shippingPostalCode: "",
+  easyboxLockerId: "",
+  easyboxLockerName: "",
+  easyboxCity: "",
+};
+
+const emptyUserEditForm = {
+  name: "",
+  email: "",
+  phone: "",
+  dateOfBirth: "",
+  roleName: "User",
+};
+
+const emptyProductForm = {
+  name: "",
+  brand: "",
+  category: "",
+  imageUrl: "",
+  priceRon: "",
+  originalPriceRon: "",
+  stock: "",
+  badge: "",
+  isActive: true,
+  shortDescription: "",
+  description: "",
+};
+
 export default function AdminDashboard() {
-  const navigate = useNavigate();
   const { user } = useAuth();
 
   const [tab, setTab] = useState("orders");
 
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
   const [ordersRaw, setOrdersRaw] = useState([]);
   const [usersRaw, setUsersRaw] = useState([]);
   const [productsRaw, setProductsRaw] = useState([]);
+  const [moderationRaw, setModerationRaw] = useState({
+    reviews: [],
+    questions: [],
+    answers: [],
+  });
 
   const [profileRoles, setProfileRoles] = useState([]);
   const [adminCheckLoading, setAdminCheckLoading] = useState(true);
+
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showOrderDetailsModal, setShowOrderDetailsModal] = useState(false);
+  const [showOrderEditModal, setShowOrderEditModal] = useState(false);
+  const [orderEditForm, setOrderEditForm] = useState(emptyOrderEditForm);
+  const [orderBusy, setOrderBusy] = useState(false);
+
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showUserDetailsModal, setShowUserDetailsModal] = useState(false);
+  const [showUserEditModal, setShowUserEditModal] = useState(false);
+  const [userEditForm, setUserEditForm] = useState(emptyUserEditForm);
+  const [userBusy, setUserBusy] = useState(false);
+
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [showProductDetailsModal, setShowProductDetailsModal] = useState(false);
+  const [showProductEditModal, setShowProductEditModal] = useState(false);
+  const [showCreateProductModal, setShowCreateProductModal] = useState(false);
+  const [productForm, setProductForm] = useState(emptyProductForm);
+  const [productBusy, setProductBusy] = useState(false);
+
+  const [moderationActionLoading, setModerationActionLoading] = useState("");
+  const [moderationNotice, setModerationNotice] = useState("");
+
+  const [showOfficialAnswerModal, setShowOfficialAnswerModal] = useState(false);
+  const [officialAnswerQuestion, setOfficialAnswerQuestion] = useState(null);
+  const [officialAnswerText, setOfficialAnswerText] = useState("");
+  const [officialAnswerError, setOfficialAnswerError] = useState("");
+  const [officialAnswerBusy, setOfficialAnswerBusy] = useState(false);
+
 
   const isAdmin = useMemo(() => {
     if (profileRoles.length) {
@@ -279,10 +478,11 @@ export default function AdminDashboard() {
     setErrorMsg("");
 
     try {
-      const [ordersRes, usersRes, productsRes] = await Promise.all([
+      const [ordersRes, usersRes, productsRes, moderationRes] = await Promise.all([
         api.get("/admin/orders"),
         api.get("/admin/users"),
         api.get("/admin/products"),
+        api.get("/admin/moderation/pending"),
       ]);
 
       setOrdersRaw(
@@ -292,6 +492,17 @@ export default function AdminDashboard() {
       setProductsRaw(
         pickArray(productsRes.data, ["products", "items", "data", "rows"])
       );
+      setModerationRaw({
+        reviews: Array.isArray(moderationRes.data?.reviews)
+          ? moderationRes.data.reviews
+          : [],
+        questions: Array.isArray(moderationRes.data?.questions)
+          ? moderationRes.data.questions
+          : [],
+        answers: Array.isArray(moderationRes.data?.answers)
+          ? moderationRes.data.answers
+          : [],
+      });
     } catch (e) {
       setErrorMsg(
         e?.response?.data?.error ||
@@ -300,6 +511,11 @@ export default function AdminDashboard() {
       setOrdersRaw([]);
       setUsersRaw([]);
       setProductsRaw([]);
+      setModerationRaw({
+        reviews: [],
+        questions: [],
+        answers: [],
+      });
     } finally {
       setLoading(false);
     }
@@ -341,6 +557,7 @@ export default function AdminDashboard() {
     if (!isAdmin) return;
 
     fetchDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminCheckLoading, isAdmin]);
 
   const orders = useMemo(() => {
@@ -353,6 +570,7 @@ export default function AdminDashboard() {
             : Number(order?.itemsCount || 0);
 
         return {
+          ...order,
           id: order?.id || "",
           orderNumber: order?.orderNumber || order?.id || "—",
           customerName:
@@ -398,9 +616,12 @@ export default function AdminDashboard() {
   const users = useMemo(() => {
     return [...usersRaw]
       .map((u) => ({
+        ...u,
         id: u?.id || "",
         name: u?.name || "Utilizator",
         email: u?.email || "—",
+        phone: u?.phone || "",
+        dateOfBirth: u?.dateOfBirth || "",
         createdAt: u?.createdAt || null,
         roleLabel: getPrimaryRoleLabel(u),
         ordersCount:
@@ -456,11 +677,22 @@ export default function AdminDashboard() {
       const status = getProductStatus(p);
 
       return {
+        ...p,
         id: p?.id || "",
         name: p?.name || "Produs",
         category: p?.category || "Necategorizat",
+        brand: p?.brand || "",
+        imageUrl: p?.imageUrl || "",
+        badge: p?.badge || "",
+        shortDescription: p?.shortDescription || "",
+        description: p?.description || "",
         priceRon: Number(p?.priceRon || 0),
+        originalPriceRon:
+          p?.originalPriceRon === null || p?.originalPriceRon === undefined
+            ? ""
+            : Number(p?.originalPriceRon || 0),
         stock: Number(p?.stock || 0),
+        isActive: p?.isActive !== false,
         salesCount:
           Number(p?.salesCount) ||
           Number(p?.sales) ||
@@ -472,6 +704,21 @@ export default function AdminDashboard() {
       };
     });
   }, [productsRaw, salesByProductId, revenueByProductId]);
+
+  const pendingReviews = useMemo(() => {
+    return Array.isArray(moderationRaw.reviews) ? moderationRaw.reviews : [];
+  }, [moderationRaw]);
+
+  const pendingQuestions = useMemo(() => {
+    return Array.isArray(moderationRaw.questions) ? moderationRaw.questions : [];
+  }, [moderationRaw]);
+
+  const pendingAnswers = useMemo(() => {
+    return Array.isArray(moderationRaw.answers) ? moderationRaw.answers : [];
+  }, [moderationRaw]);
+
+  const pendingModerationCount =
+    pendingReviews.length + pendingQuestions.length + pendingAnswers.length;
 
   const now = new Date();
 
@@ -485,7 +732,7 @@ export default function AdminDashboard() {
         );
       })
       .reduce((sum, order) => sum + order.totalRon, 0);
-  }, [orders]);
+  }, [orders, now]);
 
   const ordersThisMonth = useMemo(() => {
     return orders.filter((order) => {
@@ -495,12 +742,15 @@ export default function AdminDashboard() {
         d.getMonth() === now.getMonth()
       );
     }).length;
-  }, [orders]);
+  }, [orders, now]);
 
   const usersCount = users.length;
 
   const totalUnitsInStock = useMemo(() => {
-    return products.reduce((sum, p) => sum + Math.max(Number(p.stock || 0), 0), 0);
+    return products.reduce(
+      (sum, p) => sum + Math.max(Number(p.stock || 0), 0),
+      0
+    );
   }, [products]);
 
   const lowStockCount = useMemo(() => {
@@ -537,7 +787,7 @@ export default function AdminDashboard() {
     }
 
     return months;
-  }, [orders]);
+  }, [orders, now]);
 
   const categoryData = useMemo(() => {
     const palette = ["#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899", "#64748b"];
@@ -579,8 +829,10 @@ export default function AdminDashboard() {
 
     for (const order of orders) {
       for (const item of order.items) {
-        const productId = item?.productId || item?.product?.id || item?.productName;
-        const productName = item?.productName || item?.product?.name || "Produs";
+        const productId =
+          item?.productId || item?.product?.id || item?.productName;
+        const productName =
+          item?.productName || item?.product?.name || "Produs";
         const quantity = Number(item?.quantity) || 0;
         const revenue =
           Number(item?.lineTotalRon) ||
@@ -606,6 +858,440 @@ export default function AdminDashboard() {
       .slice(0, 5);
   }, [orders]);
 
+  const setGlobalSuccess = (message) => {
+    setSuccessMsg(message);
+    setTimeout(() => setSuccessMsg(""), 2500);
+  };
+
+  const getOrderPayload = () => {
+    const payload = {
+      status: orderEditForm.status,
+      customerName: orderEditForm.customerName,
+      customerEmail: orderEditForm.customerEmail,
+      customerPhone: orderEditForm.customerPhone || "",
+      shippingMethod: orderEditForm.shippingMethod,
+      paymentMethod: orderEditForm.paymentMethod,
+      shippingCounty: orderEditForm.shippingCounty,
+      shippingCity: orderEditForm.shippingCity,
+      shippingPostalCode: orderEditForm.shippingPostalCode || "",
+    };
+
+    if (orderEditForm.shippingMethod === "EASYBOX") {
+      payload.easyboxLockerId = orderEditForm.easyboxLockerId;
+      payload.easyboxLockerName = orderEditForm.easyboxLockerName;
+      payload.easyboxCity = orderEditForm.easyboxCity;
+    } else {
+      payload.shippingStreet = orderEditForm.shippingStreet;
+    }
+
+    return payload;
+  };
+
+  const fillOrderEditForm = (order) => {
+    setOrderEditForm({
+      status: order?.status || "PENDING",
+      customerName: order?.customerName || "",
+      customerEmail: order?.customerEmail || "",
+      customerPhone: order?.customerPhone || "",
+      shippingMethod: order?.shippingMethod || "COURIER_STANDARD",
+      paymentMethod: order?.paymentMethod || "CARD",
+      shippingCounty: order?.shippingCounty || "",
+      shippingCity: order?.shippingCity || "",
+      shippingStreet: order?.shippingStreet || "",
+      shippingPostalCode: order?.shippingPostalCode || "",
+      easyboxLockerId: order?.easyboxLockerId || "",
+      easyboxLockerName: order?.easyboxLockerName || "",
+      easyboxCity: order?.easyboxCity || "",
+    });
+  };
+
+  const fillUserEditForm = (targetUser) => {
+    setUserEditForm({
+      name: targetUser?.name || "",
+      email: targetUser?.email || "",
+      phone: targetUser?.phone || "",
+      dateOfBirth: targetUser?.dateOfBirth
+        ? String(targetUser.dateOfBirth).slice(0, 10)
+        : "",
+      roleName: targetUser?.roleLabel || "User",
+    });
+  };
+
+  const fillProductForm = (product) => {
+    setProductForm({
+      name: product?.name || "",
+      brand: product?.brand || "",
+      category: product?.category || "",
+      imageUrl: product?.imageUrl || "",
+      priceRon: product?.priceRon ?? "",
+      originalPriceRon:
+        product?.originalPriceRon === "" ||
+        product?.originalPriceRon === null ||
+        product?.originalPriceRon === undefined
+          ? ""
+          : product.originalPriceRon,
+      stock: product?.stock ?? "",
+      badge: product?.badge || "",
+      isActive: product?.isActive !== false,
+      shortDescription: product?.shortDescription || "",
+      description: product?.description || "",
+    });
+  };
+
+  const getProductPayload = () => ({
+    name: productForm.name,
+    brand: productForm.brand,
+    category: productForm.category,
+    imageUrl: productForm.imageUrl || null,
+    priceRon: Number(productForm.priceRon || 0),
+    originalPriceRon:
+      productForm.originalPriceRon === ""
+        ? null
+        : Number(productForm.originalPriceRon || 0),
+    stock: Number(productForm.stock || 0),
+    badge: productForm.badge || null,
+    isActive: Boolean(productForm.isActive),
+    shortDescription: productForm.shortDescription || null,
+    description: productForm.description || null,
+  });
+
+  const openOrderDetailsModal = async (orderId) => {
+    setErrorMsg("");
+
+    try {
+      setOrderBusy(true);
+      const res = await api.get(`/admin/orders/${orderId}`);
+      setSelectedOrder(res.data || null);
+      setShowOrderDetailsModal(true);
+    } catch (e) {
+      setErrorMsg(
+        e?.response?.data?.error || "Nu am putut încărca detaliile comenzii."
+      );
+    } finally {
+      setOrderBusy(false);
+    }
+  };
+
+  const openOrderEditModal = async (orderId) => {
+    setErrorMsg("");
+
+    try {
+      setOrderBusy(true);
+      const res = await api.get(`/admin/orders/${orderId}`);
+      const order = res.data || null;
+      setSelectedOrder(order);
+      fillOrderEditForm(order);
+      setShowOrderEditModal(true);
+    } catch (e) {
+      setErrorMsg(
+        e?.response?.data?.error || "Nu am putut încărca comanda pentru editare."
+      );
+    } finally {
+      setOrderBusy(false);
+    }
+  };
+
+  const handleSaveOrder = async () => {
+    if (!selectedOrder?.id) return;
+
+    setErrorMsg("");
+
+    try {
+      setOrderBusy(true);
+      const res = await api.patch(`/admin/orders/${selectedOrder.id}`, getOrderPayload());
+      const updatedOrder = res.data || null;
+      setSelectedOrder(updatedOrder);
+      fillOrderEditForm(updatedOrder);
+      setGlobalSuccess("Comanda a fost actualizată cu succes.");
+      await fetchDashboardData();
+    } catch (e) {
+      setErrorMsg(
+        e?.response?.data?.error ||
+          e?.response?.data?.details?.[0]?.message ||
+          "Nu am putut salva comanda."
+      );
+    } finally {
+      setOrderBusy(false);
+    }
+  };
+
+  const openUserDetailsModal = (targetUser) => {
+    setSelectedUser(targetUser);
+    setShowUserDetailsModal(true);
+  };
+
+  const openUserEditModal = (targetUser) => {
+    setSelectedUser(targetUser);
+    fillUserEditForm(targetUser);
+    setShowUserEditModal(true);
+  };
+
+  const handleSaveUser = async () => {
+    if (!selectedUser?.id) return;
+
+    setErrorMsg("");
+
+    try {
+      setUserBusy(true);
+
+      await api.patch(`/admin/users/${selectedUser.id}`, {
+        name: userEditForm.name,
+        email: userEditForm.email,
+        phone: userEditForm.phone || null,
+        dateOfBirth: userEditForm.dateOfBirth || null,
+        roleName: userEditForm.roleName,
+      });
+
+      setGlobalSuccess("Utilizatorul a fost actualizat cu succes.");
+      await fetchDashboardData();
+    } catch (e) {
+      setErrorMsg(
+        e?.response?.data?.error ||
+          e?.response?.data?.details?.[0]?.message ||
+          "Nu am putut salva utilizatorul."
+      );
+    } finally {
+      setUserBusy(false);
+    }
+  };
+
+  const openProductDetailsModal = (product) => {
+    setSelectedProduct(product);
+    setShowProductDetailsModal(true);
+  };
+
+  const openProductEditModal = (product) => {
+    setSelectedProduct(product);
+    fillProductForm(product);
+    setShowProductEditModal(true);
+  };
+
+  const openCreateProductModal = () => {
+    setSelectedProduct(null);
+    setProductForm(emptyProductForm);
+    setShowCreateProductModal(true);
+  };
+
+  const handleSaveProduct = async () => {
+    if (!selectedProduct?.id) return;
+
+    setErrorMsg("");
+
+    try {
+      setProductBusy(true);
+      await api.patch(`/admin/products/${selectedProduct.id}`, getProductPayload());
+      setGlobalSuccess("Produsul a fost actualizat cu succes.");
+      await fetchDashboardData();
+    } catch (e) {
+      setErrorMsg(
+        e?.response?.data?.error ||
+          e?.response?.data?.details?.[0]?.message ||
+          "Nu am putut salva produsul."
+      );
+    } finally {
+      setProductBusy(false);
+    }
+  };
+
+  const handleCreateProduct = async () => {
+    setErrorMsg("");
+
+    try {
+      setProductBusy(true);
+      await api.post("/admin/products", getProductPayload());
+      setGlobalSuccess("Produsul a fost adăugat cu succes.");
+      await fetchDashboardData();
+      setShowCreateProductModal(false);
+      setProductForm(emptyProductForm);
+    } catch (e) {
+      setErrorMsg(
+        e?.response?.data?.error ||
+          e?.response?.data?.details?.[0]?.message ||
+          "Nu am putut crea produsul."
+      );
+    } finally {
+      setProductBusy(false);
+    }
+  };
+
+  const handleApproveReview = async (reviewId) => {
+    if (!reviewId) return;
+
+    setModerationNotice("");
+    setErrorMsg("");
+
+    try {
+      setModerationActionLoading(`review-approve-${reviewId}`);
+      await api.patch(`/admin/reviews/${reviewId}/approve`);
+      setModerationNotice("Review-ul a fost aprobat.");
+      await fetchDashboardData();
+    } catch (e) {
+      setErrorMsg(e?.response?.data?.error || "Nu am putut aproba review-ul.");
+    } finally {
+      setModerationActionLoading("");
+    }
+  };
+
+  const handleRejectReview = async (reviewId) => {
+    if (!reviewId) return;
+
+    const reason = window.prompt("Motiv respingere review, opțional:");
+    if (reason === null) return;
+
+    setModerationNotice("");
+    setErrorMsg("");
+
+    try {
+      setModerationActionLoading(`review-reject-${reviewId}`);
+      await api.patch(`/admin/reviews/${reviewId}/reject`, {
+        reason,
+      });
+      setModerationNotice("Review-ul a fost respins.");
+      await fetchDashboardData();
+    } catch (e) {
+      setErrorMsg(e?.response?.data?.error || "Nu am putut respinge review-ul.");
+    } finally {
+      setModerationActionLoading("");
+    }
+  };
+
+  const handleApproveQuestion = async (questionId) => {
+    if (!questionId) return;
+
+    setModerationNotice("");
+    setErrorMsg("");
+
+    try {
+      setModerationActionLoading(`question-approve-${questionId}`);
+      await api.patch(`/admin/questions/${questionId}/approve`);
+      setModerationNotice("Întrebarea a fost aprobată.");
+      await fetchDashboardData();
+    } catch (e) {
+      setErrorMsg(e?.response?.data?.error || "Nu am putut aproba întrebarea.");
+    } finally {
+      setModerationActionLoading("");
+    }
+  };
+
+  const handleRejectQuestion = async (questionId) => {
+    if (!questionId) return;
+
+    const reason = window.prompt("Motiv respingere întrebare, opțional:");
+    if (reason === null) return;
+
+    setModerationNotice("");
+    setErrorMsg("");
+
+    try {
+      setModerationActionLoading(`question-reject-${questionId}`);
+      await api.patch(`/admin/questions/${questionId}/reject`, {
+        reason,
+      });
+      setModerationNotice("Întrebarea a fost respinsă.");
+      await fetchDashboardData();
+    } catch (e) {
+      setErrorMsg(e?.response?.data?.error || "Nu am putut respinge întrebarea.");
+    } finally {
+      setModerationActionLoading("");
+    }
+  };
+
+  const handleApproveAnswer = async (answerId) => {
+    if (!answerId) return;
+
+    setModerationNotice("");
+    setErrorMsg("");
+
+    try {
+      setModerationActionLoading(`answer-approve-${answerId}`);
+      await api.patch(`/admin/answers/${answerId}/approve`);
+      setModerationNotice("Răspunsul a fost aprobat.");
+      await fetchDashboardData();
+    } catch (e) {
+      setErrorMsg(e?.response?.data?.error || "Nu am putut aproba răspunsul.");
+    } finally {
+      setModerationActionLoading("");
+    }
+  };
+
+  const handleRejectAnswer = async (answerId) => {
+    if (!answerId) return;
+
+    const reason = window.prompt("Motiv respingere răspuns, opțional:");
+    if (reason === null) return;
+
+    setModerationNotice("");
+    setErrorMsg("");
+
+    try {
+      setModerationActionLoading(`answer-reject-${answerId}`);
+      await api.patch(`/admin/answers/${answerId}/reject`, {
+        reason,
+      });
+      setModerationNotice("Răspunsul a fost respins.");
+      await fetchDashboardData();
+    } catch (e) {
+      setErrorMsg(e?.response?.data?.error || "Nu am putut respinge răspunsul.");
+    } finally {
+      setModerationActionLoading("");
+    }
+  };
+
+  const openOfficialAnswerModal = (question) => {
+    setOfficialAnswerQuestion(question || null);
+    setOfficialAnswerText("");
+    setOfficialAnswerError("");
+    setShowOfficialAnswerModal(true);
+  };
+
+  const closeOfficialAnswerModal = () => {
+    setShowOfficialAnswerModal(false);
+    setOfficialAnswerQuestion(null);
+    setOfficialAnswerText("");
+    setOfficialAnswerError("");
+  };
+
+  const handleAddOfficialAnswer = async () => {
+    if (!officialAnswerQuestion?.id) {
+      setOfficialAnswerError("Întrebarea selectată nu este validă.");
+      return;
+    }
+
+    const answer = officialAnswerText.trim();
+
+    if (answer.length < 2) {
+      setOfficialAnswerError("Răspunsul trebuie să aibă minim 2 caractere.");
+      return;
+    }
+
+    setOfficialAnswerError("");
+    setErrorMsg("");
+
+    try {
+      setOfficialAnswerBusy(true);
+
+      const res = await api.post(`/admin/questions/${officialAnswerQuestion.id}/answers`, {
+        answer,
+      });
+
+      setModerationNotice(
+        res.data?.message || "Răspunsul oficial a fost publicat."
+      );
+
+      closeOfficialAnswerModal();
+      await fetchDashboardData();
+    } catch (e) {
+      setOfficialAnswerError(
+        e?.response?.data?.error ||
+          e?.response?.data?.details?.[0]?.message ||
+          "Nu am putut publica răspunsul oficial."
+      );
+    } finally {
+      setOfficialAnswerBusy(false);
+    }
+  };
+
+
   if (adminCheckLoading) {
     return (
       <div className="min-h-screen px-6 py-12">
@@ -614,9 +1300,7 @@ export default function AdminDashboard() {
             <h1 className="mb-2 text-2xl font-bold text-white">
               Se verifică accesul...
             </h1>
-            <p className="text-slate-300">
-              Te rog așteaptă câteva momente.
-            </p>
+            <p className="text-slate-300">Te rog așteaptă câteva momente.</p>
           </div>
         </div>
       </div>
@@ -635,14 +1319,17 @@ export default function AdminDashboard() {
             <p className="mb-6 text-slate-300">
               Această pagină este disponibilă doar conturilor cu rol de admin.
             </p>
-            <Button type="button" onClick={() => navigate("/account")}>
-              Înapoi în cont
-            </Button>
           </div>
         </div>
       </div>
     );
   }
+
+  const chartTooltipStyle = {
+    backgroundColor: "#1e293b",
+    border: "1px solid #334155",
+    borderRadius: "8px",
+  };
 
   return (
     <div className="min-h-screen px-6 py-12">
@@ -658,7 +1345,7 @@ export default function AdminDashboard() {
                 Dashboard Admin
               </h1>
               <p className="mt-2 text-slate-400">
-                Administrare completă pentru comenzi, utilizatori și produse
+                Administrare completă pentru comenzi, utilizatori, produse și moderare conținut
               </p>
             </div>
 
@@ -673,15 +1360,6 @@ export default function AdminDashboard() {
                 <RefreshCw className="h-4 w-4" />
                 {loading ? "Se încarcă..." : "Refresh"}
               </Button>
-
-              <Button
-                className="gap-2"
-                type="button"
-                onClick={() => navigate("/admin/settings")}
-              >
-                <Settings className="h-4 w-4" />
-                Setări sistem
-              </Button>
             </div>
           </div>
         </motion.div>
@@ -689,6 +1367,12 @@ export default function AdminDashboard() {
         {errorMsg && (
           <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             {errorMsg}
+          </div>
+        )}
+
+        {successMsg && (
+          <div className="mb-6 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">
+            {successMsg}
           </div>
         )}
 
@@ -723,7 +1407,9 @@ export default function AdminDashboard() {
                 <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 ring-1 ring-blue-500/30">
                   <ShoppingCart className="h-6 w-6 text-blue-400" />
                 </div>
-                <Badge className="bg-blue-500/20 text-blue-400">Luna curentă</Badge>
+                <Badge className="bg-blue-500/20 text-blue-400">
+                  Luna curentă
+                </Badge>
               </div>
               <div className="text-3xl font-bold text-white">
                 {ordersThisMonth}
@@ -748,22 +1434,21 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="group relative overflow-hidden rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm transition-all hover:border-pink-500/30">
-            <div className="absolute right-0 top-0 h-32 w-32 translate-x-8 -translate-y-8 rounded-full bg-pink-500/10 blur-2xl transition-all group-hover:bg-pink-500/20" />
+          <div className="group relative overflow-hidden rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm transition-all hover:border-yellow-500/30">
+            <div className="absolute right-0 top-0 h-32 w-32 translate-x-8 -translate-y-8 rounded-full bg-yellow-500/10 blur-2xl transition-all group-hover:bg-yellow-500/20" />
             <div className="relative">
               <div className="mb-4 flex items-center justify-between">
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-pink-500/20 to-red-500/20 ring-1 ring-pink-500/30">
-                  <Box className="h-6 w-6 text-pink-400" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-yellow-500/20 to-orange-500/20 ring-1 ring-yellow-500/30">
+                  <MessageSquare className="h-6 w-6 text-yellow-400" />
                 </div>
                 <Badge className="bg-yellow-500/20 text-yellow-400">
-                  <AlertCircle className="mr-1 h-3 w-3" />
-                  {lowStockCount} stoc mic
+                  Pending
                 </Badge>
               </div>
               <div className="text-3xl font-bold text-white">
-                {formatRon(totalUnitsInStock)}
+                {pendingModerationCount}
               </div>
-              <div className="text-sm text-slate-400">Unități în stoc</div>
+              <div className="text-sm text-slate-400">Conținut de moderat</div>
             </div>
           </div>
         </motion.div>
@@ -790,42 +1475,32 @@ export default function AdminDashboard() {
               </Badge>
             </div>
 
-            {salesData.length === 0 ? (
-              <div className="rounded-lg border border-slate-700/30 bg-slate-800/30 p-6 text-sm text-slate-300">
-                Nu există suficiente date pentru grafic.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={salesData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="month" stroke="#94a3b8" />
-                  <YAxis stroke="#94a3b8" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#1e293b",
-                      border: "1px solid #334155",
-                      borderRadius: "8px",
-                    }}
-                    labelStyle={{ color: "#e2e8f0" }}
-                  />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="vanzari"
-                    stroke="#06b6d4"
-                    strokeWidth={2}
-                    name="Vânzări (RON)"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="comenzi"
-                    stroke="#8b5cf6"
-                    strokeWidth={2}
-                    name="Comenzi"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={salesData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="month" stroke="#94a3b8" />
+                <YAxis stroke="#94a3b8" />
+                <Tooltip
+                  contentStyle={chartTooltipStyle}
+                  labelStyle={{ color: "#e2e8f0" }}
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="vanzari"
+                  stroke="#06b6d4"
+                  strokeWidth={2}
+                  name="Vânzări (RON)"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="comenzi"
+                  stroke="#8b5cf6"
+                  strokeWidth={2}
+                  name="Comenzi"
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
 
           <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm">
@@ -857,13 +1532,7 @@ export default function AdminDashboard() {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#1e293b",
-                        border: "1px solid #334155",
-                        borderRadius: "8px",
-                      }}
-                    />
+                    <Tooltip contentStyle={chartTooltipStyle} />
                   </PieChart>
                 </ResponsiveContainer>
 
@@ -878,7 +1547,9 @@ export default function AdminDashboard() {
                           className="h-3 w-3 rounded-full"
                           style={{ backgroundColor: item.color }}
                         />
-                        <span className="text-sm text-slate-400">{item.name}</span>
+                        <span className="text-sm text-slate-400">
+                          {item.name}
+                        </span>
                       </div>
                       <span className="text-sm font-medium text-white">
                         {item.value}%
@@ -934,7 +1605,9 @@ export default function AdminDashboard() {
                       <Cpu className="h-6 w-6 text-cyan-400" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-white">{product.name}</h4>
+                      <h4 className="font-semibold text-white">
+                        {product.name}
+                      </h4>
                       <p className="text-sm text-slate-400">
                         {product.sales} bucăți vândute
                       </p>
@@ -957,7 +1630,7 @@ export default function AdminDashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <div className="mb-8 grid w-full grid-cols-3 rounded-xl border border-slate-700/50 bg-slate-900/50 p-1 backdrop-blur-sm">
+          <div className="mb-8 grid w-full grid-cols-2 gap-1 rounded-xl border border-slate-700/50 bg-slate-900/50 p-1 backdrop-blur-sm md:grid-cols-4">
             <TabButton
               active={tab === "orders"}
               icon={ShoppingCart}
@@ -980,6 +1653,15 @@ export default function AdminDashboard() {
               onClick={() => setTab("products")}
             >
               Produse
+            </TabButton>
+
+            <TabButton
+              active={tab === "moderation"}
+              icon={MessageSquare}
+              onClick={() => setTab("moderation")}
+            >
+              Moderare
+              {pendingModerationCount > 0 ? ` (${pendingModerationCount})` : ""}
             </TabButton>
           </div>
 
@@ -1093,24 +1775,22 @@ export default function AdminDashboard() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-8 w-8 p-0"
+                                  className="h-10 w-10 p-0"
                                   type="button"
-                                  onClick={() =>
-                                    navigate(`/admin/orders/${order.id}`)
-                                  }
+                                  disabled={orderBusy}
+                                  onClick={() => openOrderDetailsModal(order.id)}
                                 >
                                   <Eye className="h-5 w-5" />
                                 </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-8 w-8 p-0"
+                                  className="h-10 w-10 p-0"
                                   type="button"
-                                  onClick={() =>
-                                    navigate(`/admin/orders/${order.id}/edit`)
-                                  }
+                                  disabled={orderBusy}
+                                  onClick={() => openOrderEditModal(order.id)}
                                 >
-                                  <Edit className="h-4 w-4" />
+                                  <Edit className="h-5 w-5" />
                                 </Button>
                               </div>
                             </td>
@@ -1234,24 +1914,20 @@ export default function AdminDashboard() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-8 w-8 p-0"
+                                  className="h-10 w-10 p-0"
                                   type="button"
-                                  onClick={() =>
-                                    navigate(`/admin/users/${row.id}`)
-                                  }
+                                  onClick={() => openUserDetailsModal(row)}
                                 >
                                   <Eye className="h-5 w-5" />
                                 </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-8 w-8 p-0"
+                                  className="h-10 w-10 p-0"
                                   type="button"
-                                  onClick={() =>
-                                    navigate(`/admin/users/${row.id}/edit`)
-                                  }
+                                  onClick={() => openUserEditModal(row)}
                                 >
-                                  <Edit className="h-4 w-4" />
+                                  <Edit className="h-5 w-5" />
                                 </Button>
                               </div>
                             </td>
@@ -1288,8 +1964,10 @@ export default function AdminDashboard() {
                   <Button
                     size="sm"
                     type="button"
-                    onClick={() => navigate("/admin/products/new")}
+                    className="gap-2"
+                    onClick={openCreateProductModal}
                   >
+                    <Plus className="h-4 w-4" />
                     Adaugă produs
                   </Button>
                 </div>
@@ -1384,7 +2062,9 @@ export default function AdminDashboard() {
                               </span>
                             </td>
                             <td className="px-6 py-4">
-                              <Badge className={getProductStatusColor(product.status)}>
+                              <Badge
+                                className={getProductStatusColor(product.status)}
+                              >
                                 {getProductStatusLabel(product.status)}
                               </Badge>
                             </td>
@@ -1393,22 +2073,18 @@ export default function AdminDashboard() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-8 w-8 p-0"
+                                  className="h-10 w-10 p-0"
                                   type="button"
-                                  onClick={() =>
-                                    navigate(`/products/${product.id}`)
-                                  }
+                                  onClick={() => openProductDetailsModal(product)}
                                 >
                                   <Eye className="h-5 w-5" />
                                 </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-8 w-8 p-0"
+                                  className="h-10 w-10 p-0"
                                   type="button"
-                                  onClick={() =>
-                                    navigate(`/admin/products/${product.id}/edit`)
-                                  }
+                                  onClick={() => openProductEditModal(product)}
                                 >
                                   <Edit className="h-5 w-5" />
                                 </Button>
@@ -1423,8 +2099,1242 @@ export default function AdminDashboard() {
               </div>
             </div>
           )}
+
+          {tab === "moderation" && (
+            <div className="space-y-8">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">
+                    Moderare conținut
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-400">
+                    Aprobă sau respinge review-uri, întrebări și răspunsuri înainte să apară public.
+                  </p>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  type="button"
+                  onClick={fetchDashboardData}
+                  disabled={loading}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Reîmprospătează
+                </Button>
+              </div>
+
+              {moderationNotice && (
+                <div className="rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">
+                  {moderationNotice}
+                </div>
+              )}
+
+              <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-white">
+                    Review-uri în așteptare
+                  </h3>
+
+                  <Badge className="bg-yellow-500/20 text-yellow-400">
+                    {pendingReviews.length} pending
+                  </Badge>
+                </div>
+
+                {pendingReviews.length === 0 ? (
+                  <div className="rounded-lg border border-slate-700/30 bg-slate-800/30 p-6 text-sm text-slate-300">
+                    Nu există review-uri de moderat.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {pendingReviews.map((review) => (
+                      <div
+                        key={review.id}
+                        className="rounded-xl border border-slate-700/40 bg-slate-800/30 p-5"
+                      >
+                        <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div>
+                            <div className="mb-1 flex flex-wrap items-center gap-2">
+                              <Badge className="bg-cyan-500/20 text-cyan-400">
+                                Review
+                              </Badge>
+                              <span className="text-sm text-slate-400">
+                                {formatDateTimeRo(review.createdAt)}
+                              </span>
+                            </div>
+
+                            <h4 className="font-semibold text-white">
+                              {review.title || "Review fără titlu"}
+                            </h4>
+
+                            <p className="mt-1 text-sm text-slate-400">
+                              Produs:{" "}
+                              <span className="text-cyan-300">
+                                {review.product?.name || "—"}
+                              </span>
+                            </p>
+
+                            <p className="text-sm text-slate-400">
+                              Autor: {review.authorName || review.user?.email || "Utilizator"}
+                            </p>
+
+                            <p className="text-sm text-yellow-300">
+                              Rating: {review.rating}/5
+                            </p>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              type="button"
+                              className="gap-2"
+                              disabled={Boolean(moderationActionLoading)}
+                              onClick={() => handleApproveReview(review.id)}
+                            >
+                              <Check className="h-4 w-4" />
+                              Aprobă
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              type="button"
+                              className="gap-2"
+                              disabled={Boolean(moderationActionLoading)}
+                              onClick={() => handleRejectReview(review.id)}
+                            >
+                              <X className="h-4 w-4" />
+                              Respinge
+                            </Button>
+                          </div>
+                        </div>
+
+                        <p className="whitespace-pre-wrap rounded-lg border border-slate-700/40 bg-slate-900/60 p-4 text-sm text-slate-200">
+                          {review.content}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-white">
+                    Întrebări în așteptare
+                  </h3>
+
+                  <Badge className="bg-yellow-500/20 text-yellow-400">
+                    {pendingQuestions.length} pending
+                  </Badge>
+                </div>
+
+                {pendingQuestions.length === 0 ? (
+                  <div className="rounded-lg border border-slate-700/30 bg-slate-800/30 p-6 text-sm text-slate-300">
+                    Nu există întrebări de moderat.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {pendingQuestions.map((question) => (
+                      <div
+                        key={question.id}
+                        className="rounded-xl border border-slate-700/40 bg-slate-800/30 p-5"
+                      >
+                        <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div>
+                            <div className="mb-1 flex flex-wrap items-center gap-2">
+                              <Badge className="bg-purple-500/20 text-purple-400">
+                                Întrebare
+                              </Badge>
+                              <span className="text-sm text-slate-400">
+                                {formatDateTimeRo(question.createdAt)}
+                              </span>
+                            </div>
+
+                            <p className="mt-1 text-sm text-slate-400">
+                              Produs:{" "}
+                              <span className="text-cyan-300">
+                                {question.product?.name || "—"}
+                              </span>
+                            </p>
+
+                            <p className="text-sm text-slate-400">
+                              Autor: {question.authorName || question.user?.email || "Utilizator"}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              type="button"
+                              className="gap-2"
+                              disabled={Boolean(moderationActionLoading)}
+                              onClick={() => openOfficialAnswerModal(question)}
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                              Răspunde oficial
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              type="button"
+                              className="gap-2"
+                              disabled={Boolean(moderationActionLoading)}
+                              onClick={() => handleApproveQuestion(question.id)}
+                            >
+                              <Check className="h-4 w-4" />
+                              Aprobă
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              type="button"
+                              className="gap-2"
+                              disabled={Boolean(moderationActionLoading)}
+                              onClick={() => handleRejectQuestion(question.id)}
+                            >
+                              <X className="h-4 w-4" />
+                              Respinge
+                            </Button>
+                          </div>
+                        </div>
+
+                        <p className="whitespace-pre-wrap rounded-lg border border-slate-700/40 bg-slate-900/60 p-4 text-sm text-slate-200">
+                          {question.question}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-white">
+                    Răspunsuri în așteptare
+                  </h3>
+
+                  <Badge className="bg-yellow-500/20 text-yellow-400">
+                    {pendingAnswers.length} pending
+                  </Badge>
+                </div>
+
+                {pendingAnswers.length === 0 ? (
+                  <div className="rounded-lg border border-slate-700/30 bg-slate-800/30 p-6 text-sm text-slate-300">
+                    Nu există răspunsuri de moderat.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {pendingAnswers.map((answer) => (
+                      <div
+                        key={answer.id}
+                        className="rounded-xl border border-slate-700/40 bg-slate-800/30 p-5"
+                      >
+                        <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div>
+                            <div className="mb-1 flex flex-wrap items-center gap-2">
+                              <Badge className="bg-blue-500/20 text-blue-400">
+                                Răspuns
+                              </Badge>
+                              {answer.isOfficial && (
+                                <Badge className="bg-cyan-500/20 text-cyan-400">
+                                  Oficial
+                                </Badge>
+                              )}
+                              <span className="text-sm text-slate-400">
+                                {formatDateTimeRo(answer.createdAt)}
+                              </span>
+                            </div>
+
+                            <p className="mt-1 text-sm text-slate-400">
+                              Produs:{" "}
+                              <span className="text-cyan-300">
+                                {answer.question?.product?.name || "—"}
+                              </span>
+                            </p>
+
+                            <p className="text-sm text-slate-400">
+                              Întrebare:{" "}
+                              <span className="text-slate-300">
+                                {answer.question?.question || "—"}
+                              </span>
+                            </p>
+
+                            <p className="text-sm text-slate-400">
+                              Autor: {answer.authorName || answer.user?.email || "Utilizator"}
+                            </p>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              type="button"
+                              className="gap-2"
+                              disabled={Boolean(moderationActionLoading)}
+                              onClick={() => handleApproveAnswer(answer.id)}
+                            >
+                              <Check className="h-4 w-4" />
+                              Aprobă
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              type="button"
+                              className="gap-2"
+                              disabled={Boolean(moderationActionLoading)}
+                              onClick={() => handleRejectAnswer(answer.id)}
+                            >
+                              <X className="h-4 w-4" />
+                              Respinge
+                            </Button>
+                          </div>
+                        </div>
+
+                        <p className="whitespace-pre-wrap rounded-lg border border-slate-700/40 bg-slate-900/60 p-4 text-sm text-slate-200">
+                          {answer.answer}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </motion.div>
       </div>
+
+      {showOrderDetailsModal && selectedOrder && (
+        <Modal
+          title={`Comandă #${selectedOrder.orderNumber || selectedOrder.id}`}
+          subtitle="Detalii complete despre comandă"
+          onClose={() => {
+            setShowOrderDetailsModal(false);
+            setSelectedOrder(null);
+          }}
+          maxWidth="max-w-5xl"
+        >
+          <div className="mb-6 flex flex-col gap-4 border-b border-slate-700/50 pb-6 md:flex-row md:items-start md:justify-between">
+            <div>
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-400">
+                <div className="inline-flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 text-cyan-400" />
+                  {formatDateRo(selectedOrder.createdAt)}
+                </div>
+
+                <Badge className={getOrderStatusColor(selectedOrder.status)}>
+                  {getOrderStatusIcon(selectedOrder.status)}
+                  <span className="ml-1">
+                    {getOrderStatusLabel(selectedOrder.status)}
+                  </span>
+                </Badge>
+              </div>
+            </div>
+
+            <div className="text-left md:text-right">
+              <div className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-3xl font-bold text-transparent">
+                {formatRon(selectedOrder.totalRon)} RON
+              </div>
+              <div className="text-xs text-slate-400">Total comandă</div>
+            </div>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="space-y-6 lg:col-span-2">
+              <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+                <div className="mb-4 flex items-center gap-2">
+                  <Package className="h-5 w-5 text-cyan-400" />
+                  <h4 className="text-lg font-semibold text-white">Produse</h4>
+                </div>
+
+                <div className="space-y-3">
+                  {(selectedOrder.items || []).map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-lg border border-slate-700/40 bg-slate-800/30 p-4"
+                    >
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div className="flex-1">
+                          <div className="mb-1 flex flex-wrap items-center gap-2">
+                            <Badge className="border border-cyan-500/30 bg-cyan-500/10 text-cyan-400">
+                              {item.category}
+                            </Badge>
+                            <span className="text-xs text-slate-500">
+                              {item.brand}
+                            </span>
+                          </div>
+
+                          <h5 className="font-medium text-white">
+                            {item.productName}
+                          </h5>
+
+                          <p className="mt-1 text-sm text-slate-400">
+                            Cantitate: {item.quantity} ×{" "}
+                            {formatRon(item.unitPriceRon)} RON
+                          </p>
+                        </div>
+
+                        <div className="text-left md:text-right">
+                          <div className="font-semibold text-cyan-400">
+                            {formatRon(item.lineTotalRon)} RON
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            Subtotal produs
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+                  <div className="mb-4 flex items-center gap-2">
+                    <Truck className="h-5 w-5 text-cyan-400" />
+                    <h4 className="text-lg font-semibold text-white">
+                      Livrare
+                    </h4>
+                  </div>
+
+                  <div className="space-y-2 text-sm text-slate-300">
+                    <p>
+                      <span className="text-slate-400">Metodă:</span>{" "}
+                      {shippingMethodLabel(selectedOrder.shippingMethod)}
+                    </p>
+
+                    {selectedOrder.shippingMethod === "EASYBOX" ? (
+                      <>
+                        <p>
+                          <span className="text-slate-400">Locker:</span>{" "}
+                          {selectedOrder.easyboxLockerName || "—"}
+                        </p>
+                        <p>
+                          <span className="text-slate-400">Oraș:</span>{" "}
+                          {selectedOrder.easyboxCity || "—"}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p>
+                          <span className="text-slate-400">Adresă:</span>{" "}
+                          {selectedOrder.shippingStreet || "—"}
+                        </p>
+                        <p>
+                          <span className="text-slate-400">Localitate:</span>{" "}
+                          {selectedOrder.shippingCity || "—"},{" "}
+                          {selectedOrder.shippingCounty || "—"}
+                        </p>
+                        <p>
+                          <span className="text-slate-400">Cod poștal:</span>{" "}
+                          {selectedOrder.shippingPostalCode || "—"}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+                  <div className="mb-4 flex items-center gap-2">
+                    <CreditCard className="h-5 w-5 text-cyan-400" />
+                    <h4 className="text-lg font-semibold text-white">
+                      Plată
+                    </h4>
+                  </div>
+
+                  <div className="space-y-2 text-sm text-slate-300">
+                    <p>
+                      <span className="text-slate-400">Metodă:</span>{" "}
+                      {paymentMethodLabel(selectedOrder.paymentMethod)}
+                    </p>
+                    <p>
+                      <span className="text-slate-400">Status:</span>{" "}
+                      {getOrderStatusLabel(selectedOrder.status)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+                <div className="mb-4 flex items-center gap-2">
+                  <User className="h-5 w-5 text-cyan-400" />
+                  <h4 className="text-lg font-semibold text-white">Client</h4>
+                </div>
+
+                <div className="space-y-2 text-sm text-slate-300">
+                  <p>{selectedOrder.customerName || "—"}</p>
+                  <p>{selectedOrder.customerEmail || "—"}</p>
+                  <p>{selectedOrder.customerPhone || "—"}</p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+                <div className="mb-4 flex items-center gap-2">
+                  <ReceiptText className="h-5 w-5 text-cyan-400" />
+                  <h4 className="text-lg font-semibold text-white">Sumar</h4>
+                </div>
+
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center justify-between text-slate-300">
+                    <span>Subtotal produse</span>
+                    <span>{formatRon(selectedOrder.subtotalRon)} RON</span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-slate-300">
+                    <span>TVA</span>
+                    <span>{formatRon(selectedOrder.vatRon)} RON</span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-slate-300">
+                    <span>Transport</span>
+                    <span>{formatRon(selectedOrder.shippingFeeRon)} RON</span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-slate-300">
+                    <span>Taxă plată</span>
+                    <span>{formatRon(selectedOrder.paymentFeeRon)} RON</span>
+                  </div>
+
+                  <div className="border-t border-slate-700 pt-3">
+                    <div className="flex items-center justify-between font-semibold text-white">
+                      <span>Total</span>
+                      <span className="text-cyan-400">
+                        {formatRon(selectedOrder.totalRon)} RON
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setShowOrderDetailsModal(false);
+                  setSelectedOrder(null);
+                }}
+              >
+                Închide
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {showOrderEditModal && selectedOrder && (
+        <Modal
+          title={`Editează comanda #${selectedOrder.orderNumber || selectedOrder.id}`}
+          subtitle="Modifică statusul și detaliile clientului sau livrării."
+          onClose={() => {
+            setShowOrderEditModal(false);
+            setSelectedOrder(null);
+            setOrderEditForm(emptyOrderEditForm);
+          }}
+          maxWidth="max-w-4xl"
+        >
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+              <h4 className="mb-4 text-lg font-semibold text-white">
+                Client și status
+              </h4>
+
+              <div className="space-y-4">
+                <Field label="Status">
+                  <SelectInput
+                    value={orderEditForm.status}
+                    onChange={(e) =>
+                      setOrderEditForm((prev) => ({ ...prev, status: e.target.value }))
+                    }
+                  >
+                    <option value="PENDING">În așteptare</option>
+                    <option value="PAID">Plătită</option>
+                    <option value="PROCESSING">Procesare</option>
+                    <option value="SHIPPED">Expediată</option>
+                    <option value="DELIVERED">Livrată</option>
+                    <option value="CANCELED">Anulată</option>
+                  </SelectInput>
+                </Field>
+
+                <Field label="Nume client">
+                  <TextInput
+                    type="text"
+                    value={orderEditForm.customerName}
+                    onChange={(e) =>
+                      setOrderEditForm((prev) => ({ ...prev, customerName: e.target.value }))
+                    }
+                  />
+                </Field>
+
+                <Field label="Email client">
+                  <TextInput
+                    type="email"
+                    value={orderEditForm.customerEmail}
+                    onChange={(e) =>
+                      setOrderEditForm((prev) => ({ ...prev, customerEmail: e.target.value }))
+                    }
+                  />
+                </Field>
+
+                <Field label="Telefon client">
+                  <TextInput
+                    type="text"
+                    value={orderEditForm.customerPhone}
+                    onChange={(e) =>
+                      setOrderEditForm((prev) => ({ ...prev, customerPhone: e.target.value }))
+                    }
+                  />
+                </Field>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+              <h4 className="mb-4 text-lg font-semibold text-white">
+                Livrare și plată
+              </h4>
+
+              <div className="space-y-4">
+                <Field label="Metodă livrare">
+                  <SelectInput
+                    value={orderEditForm.shippingMethod}
+                    onChange={(e) =>
+                      setOrderEditForm((prev) => ({ ...prev, shippingMethod: e.target.value }))
+                    }
+                  >
+                    <option value="COURIER_STANDARD">Curier standard</option>
+                    <option value="COURIER_EXPRESS">Curier expres</option>
+                    <option value="EASYBOX">EasyBox</option>
+                  </SelectInput>
+                </Field>
+
+                <Field label="Metodă plată">
+                  <SelectInput
+                    value={orderEditForm.paymentMethod}
+                    onChange={(e) =>
+                      setOrderEditForm((prev) => ({ ...prev, paymentMethod: e.target.value }))
+                    }
+                  >
+                    <option value="CARD">Card</option>
+                    <option value="CASH_ON_DELIVERY">Ramburs</option>
+                  </SelectInput>
+                </Field>
+
+                <Field label="Județ">
+                  <TextInput
+                    type="text"
+                    value={orderEditForm.shippingCounty}
+                    onChange={(e) =>
+                      setOrderEditForm((prev) => ({ ...prev, shippingCounty: e.target.value }))
+                    }
+                  />
+                </Field>
+
+                <Field label="Oraș">
+                  <TextInput
+                    type="text"
+                    value={orderEditForm.shippingCity}
+                    onChange={(e) =>
+                      setOrderEditForm((prev) => ({ ...prev, shippingCity: e.target.value }))
+                    }
+                  />
+                </Field>
+
+                <Field label="Cod poștal">
+                  <TextInput
+                    type="text"
+                    value={orderEditForm.shippingPostalCode}
+                    onChange={(e) =>
+                      setOrderEditForm((prev) => ({
+                        ...prev,
+                        shippingPostalCode: e.target.value,
+                      }))
+                    }
+                  />
+                </Field>
+              </div>
+            </div>
+          </div>
+
+          {orderEditForm.shippingMethod === "EASYBOX" ? (
+            <div className="mt-6 rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+              <h4 className="mb-4 text-lg font-semibold text-white">
+                Date EasyBox
+              </h4>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <Field label="Locker ID">
+                  <TextInput
+                    type="text"
+                    value={orderEditForm.easyboxLockerId}
+                    onChange={(e) =>
+                      setOrderEditForm((prev) => ({
+                        ...prev,
+                        easyboxLockerId: e.target.value,
+                      }))
+                    }
+                  />
+                </Field>
+
+                <Field label="Nume locker">
+                  <TextInput
+                    type="text"
+                    value={orderEditForm.easyboxLockerName}
+                    onChange={(e) =>
+                      setOrderEditForm((prev) => ({
+                        ...prev,
+                        easyboxLockerName: e.target.value,
+                      }))
+                    }
+                  />
+                </Field>
+
+                <Field label="Oraș EasyBox">
+                  <TextInput
+                    type="text"
+                    value={orderEditForm.easyboxCity}
+                    onChange={(e) =>
+                      setOrderEditForm((prev) => ({
+                        ...prev,
+                        easyboxCity: e.target.value,
+                      }))
+                    }
+                  />
+                </Field>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-6 rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+              <Field label="Stradă / adresă completă">
+                <TextInput
+                  type="text"
+                  value={orderEditForm.shippingStreet}
+                  onChange={(e) =>
+                    setOrderEditForm((prev) => ({
+                      ...prev,
+                      shippingStreet: e.target.value,
+                    }))
+                  }
+                />
+              </Field>
+            </div>
+          )}
+
+          <div className="mt-6 flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowOrderEditModal(false);
+                setSelectedOrder(null);
+                setOrderEditForm(emptyOrderEditForm);
+              }}
+            >
+              <X className="mr-2 h-4 w-4" />
+              Anulează
+            </Button>
+
+            <Button
+              type="button"
+              onClick={handleSaveOrder}
+              disabled={orderBusy}
+              className="gap-2"
+            >
+              <Save className="h-4 w-4" />
+              {orderBusy ? "Se salvează..." : "Salvează"}
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {showUserDetailsModal && selectedUser && (
+        <Modal
+          title="Detalii utilizator"
+          subtitle="Informații despre contul selectat."
+          onClose={() => {
+            setShowUserDetailsModal(false);
+            setSelectedUser(null);
+          }}
+          maxWidth="max-w-3xl"
+        >
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <User className="h-5 w-5 text-cyan-400" />
+                <h4 className="text-lg font-semibold text-white">Profil</h4>
+              </div>
+
+              <div className="space-y-3 text-sm text-slate-300">
+                <p><span className="text-slate-400">Nume:</span> {selectedUser.name || "—"}</p>
+                <p><span className="text-slate-400">Email:</span> {selectedUser.email || "—"}</p>
+                <p><span className="text-slate-400">Telefon:</span> {selectedUser.phone || "—"}</p>
+                <p><span className="text-slate-400">Data nașterii:</span> {formatDateRo(selectedUser.dateOfBirth)}</p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <Shield className="h-5 w-5 text-cyan-400" />
+                <h4 className="text-lg font-semibold text-white">Cont</h4>
+              </div>
+
+              <div className="space-y-3 text-sm text-slate-300">
+                <p><span className="text-slate-400">Rol:</span> {selectedUser.roleLabel || "—"}</p>
+                <p><span className="text-slate-400">Creat la:</span> {formatDateTimeRo(selectedUser.createdAt)}</p>
+                <p><span className="text-slate-400">Comenzi:</span> {selectedUser.ordersCount}</p>
+                <p><span className="text-slate-400">Cheltuieli:</span> {formatRon(selectedUser.spentRon)} RON</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowUserDetailsModal(false);
+                setSelectedUser(null);
+              }}
+            >
+              Închide
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {showUserEditModal && selectedUser && (
+        <Modal
+          title="Editează utilizator"
+          subtitle="Modifică informațiile de bază ale utilizatorului."
+          onClose={() => {
+            setShowUserEditModal(false);
+            setSelectedUser(null);
+            setUserEditForm(emptyUserEditForm);
+          }}
+          maxWidth="max-w-3xl"
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Nume">
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                <TextInput
+                  type="text"
+                  value={userEditForm.name}
+                  onChange={(e) =>
+                    setUserEditForm((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  className="pl-11"
+                />
+              </div>
+            </Field>
+
+            <Field label="Email">
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                <TextInput
+                  type="email"
+                  value={userEditForm.email}
+                  onChange={(e) =>
+                    setUserEditForm((prev) => ({ ...prev, email: e.target.value }))
+                  }
+                  className="pl-11"
+                />
+              </div>
+            </Field>
+
+            <Field label="Telefon">
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                <TextInput
+                  type="text"
+                  value={userEditForm.phone}
+                  onChange={(e) =>
+                    setUserEditForm((prev) => ({ ...prev, phone: e.target.value }))
+                  }
+                  className="pl-11"
+                />
+              </div>
+            </Field>
+
+            <Field label="Data nașterii">
+              <TextInput
+                type="date"
+                value={userEditForm.dateOfBirth}
+                onChange={(e) =>
+                  setUserEditForm((prev) => ({ ...prev, dateOfBirth: e.target.value }))
+                }
+              />
+            </Field>
+
+            <Field label="Rol">
+              <SelectInput
+                value={userEditForm.roleName}
+                onChange={(e) =>
+                  setUserEditForm((prev) => ({ ...prev, roleName: e.target.value }))
+                }
+              >
+                <option value="User">User</option>
+                <option value="Admin">Admin</option>
+              </SelectInput>
+            </Field>
+          </div>
+
+          <div className="mt-6 flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowUserEditModal(false);
+                setSelectedUser(null);
+                setUserEditForm(emptyUserEditForm);
+              }}
+            >
+              <X className="mr-2 h-4 w-4" />
+              Anulează
+            </Button>
+
+            <Button
+              type="button"
+              onClick={handleSaveUser}
+              disabled={userBusy}
+              className="gap-2"
+            >
+              <Save className="h-4 w-4" />
+              {userBusy ? "Se salvează..." : "Salvează"}
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {showProductDetailsModal && selectedProduct && (
+        <Modal
+          title={selectedProduct.name}
+          subtitle="Detalii complete produs"
+          onClose={() => {
+            setShowProductDetailsModal(false);
+            setSelectedProduct(null);
+          }}
+          maxWidth="max-w-4xl"
+        >
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+              <h4 className="mb-4 text-lg font-semibold text-white">
+                Informații generale
+              </h4>
+
+              <div className="space-y-3 text-sm text-slate-300">
+                <p><span className="text-slate-400">Brand:</span> {selectedProduct.brand || "—"}</p>
+                <p><span className="text-slate-400">Categorie:</span> {selectedProduct.category || "—"}</p>
+                <p><span className="text-slate-400">Preț:</span> {formatRon(selectedProduct.priceRon)} RON</p>
+                <p><span className="text-slate-400">Preț original:</span> {selectedProduct.originalPriceRon === "" ? "—" : `${formatRon(selectedProduct.originalPriceRon)} RON`}</p>
+                <p><span className="text-slate-400">Stoc:</span> {selectedProduct.stock}</p>
+                <p><span className="text-slate-400">Badge:</span> {selectedProduct.badge || "—"}</p>
+                <p>
+                  <span className="text-slate-400">Status:</span>{" "}
+                  <Badge className={getProductStatusColor(selectedProduct.status)}>
+                    {getProductStatusLabel(selectedProduct.status)}
+                  </Badge>
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+              <h4 className="mb-4 text-lg font-semibold text-white">
+                Performanță
+              </h4>
+
+              <div className="space-y-3 text-sm text-slate-300">
+                <p><span className="text-slate-400">Vânzări:</span> {selectedProduct.salesCount}</p>
+                <p><span className="text-slate-400">Venit generat:</span> {formatRon(selectedProduct.revenueRon)} RON</p>
+                <p><span className="text-slate-400">Activ:</span> {selectedProduct.isActive ? "Da" : "Nu"}</p>
+                <p><span className="text-slate-400">Imagine:</span> {selectedProduct.imageUrl || "—"}</p>
+              </div>
+            </div>
+
+            <div className="md:col-span-2 rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+              <h4 className="mb-4 text-lg font-semibold text-white">
+                Descriere
+              </h4>
+
+              <div className="space-y-3 text-sm text-slate-300">
+                <p><span className="text-slate-400">Descriere scurtă:</span> {selectedProduct.shortDescription || "—"}</p>
+                <p><span className="text-slate-400">Descriere completă:</span> {selectedProduct.description || "—"}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowProductDetailsModal(false);
+                setSelectedProduct(null);
+              }}
+            >
+              Închide
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+
+      {showOfficialAnswerModal && officialAnswerQuestion && (
+        <Modal
+          title="Răspuns oficial"
+          subtitle="Răspunsul adminului va fi publicat imediat și marcat ca Oficial."
+          onClose={closeOfficialAnswerModal}
+          maxWidth="max-w-3xl"
+        >
+          <div className="mb-4 rounded-xl border border-slate-700/50 bg-slate-900/60 p-4">
+            <div className="mb-2 text-xs uppercase tracking-wide text-slate-500">
+              Întrebare
+            </div>
+            <p className="text-sm text-slate-200">
+              {officialAnswerQuestion.question}
+            </p>
+            <p className="mt-2 text-xs text-slate-500">
+              Produs: {officialAnswerQuestion.product?.name || "—"}
+            </p>
+          </div>
+
+          {officialAnswerError && (
+            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+              {officialAnswerError}
+            </div>
+          )}
+
+          <Field label="Răspuns">
+            <TextArea
+              rows={6}
+              value={officialAnswerText}
+              onChange={(e) => setOfficialAnswerText(e.target.value)}
+              placeholder="Scrie răspunsul oficial aici..."
+            />
+          </Field>
+
+          <div className="mt-6 flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeOfficialAnswerModal}
+            >
+              <X className="mr-2 h-4 w-4" />
+              Anulează
+            </Button>
+
+            <Button
+              type="button"
+              onClick={handleAddOfficialAnswer}
+              disabled={officialAnswerBusy}
+              className="gap-2"
+            >
+              <Send className="h-4 w-4" />
+              {officialAnswerBusy ? "Se publică..." : "Publică răspuns oficial"}
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {(showProductEditModal || showCreateProductModal) && (
+        <Modal
+          title={showCreateProductModal ? "Adaugă produs nou" : "Editează produs"}
+          subtitle={
+            showCreateProductModal
+              ? "Completează datele pentru produsul nou."
+              : "Modifică datele produsului selectat."
+          }
+          onClose={() => {
+            setShowProductEditModal(false);
+            setShowCreateProductModal(false);
+            setSelectedProduct(null);
+            setProductForm(emptyProductForm);
+          }}
+          maxWidth="max-w-4xl"
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Nume">
+              <div className="relative">
+                <Cpu className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                <TextInput
+                  type="text"
+                  value={productForm.name}
+                  onChange={(e) =>
+                    setProductForm((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  className="pl-11"
+                />
+              </div>
+            </Field>
+
+            <Field label="Brand">
+              <TextInput
+                type="text"
+                value={productForm.brand}
+                onChange={(e) =>
+                  setProductForm((prev) => ({ ...prev, brand: e.target.value }))
+                }
+              />
+            </Field>
+
+            <Field label="Categorie">
+              <div className="relative">
+                <Tag className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                <TextInput
+                  type="text"
+                  value={productForm.category}
+                  onChange={(e) =>
+                    setProductForm((prev) => ({ ...prev, category: e.target.value }))
+                  }
+                  className="pl-11"
+                />
+              </div>
+            </Field>
+
+            <Field label="URL imagine">
+              <div className="relative">
+                <ImageIcon className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                <TextInput
+                  type="text"
+                  value={productForm.imageUrl}
+                  onChange={(e) =>
+                    setProductForm((prev) => ({ ...prev, imageUrl: e.target.value }))
+                  }
+                  className="pl-11"
+                />
+              </div>
+            </Field>
+
+            <Field label="Preț RON">
+              <TextInput
+                type="number"
+                value={productForm.priceRon}
+                onChange={(e) =>
+                  setProductForm((prev) => ({ ...prev, priceRon: e.target.value }))
+                }
+              />
+            </Field>
+
+            <Field label="Preț original RON">
+              <TextInput
+                type="number"
+                value={productForm.originalPriceRon}
+                onChange={(e) =>
+                  setProductForm((prev) => ({
+                    ...prev,
+                    originalPriceRon: e.target.value,
+                  }))
+                }
+              />
+            </Field>
+
+            <Field label="Stoc">
+              <TextInput
+                type="number"
+                value={productForm.stock}
+                onChange={(e) =>
+                  setProductForm((prev) => ({ ...prev, stock: e.target.value }))
+                }
+              />
+            </Field>
+
+            <Field label="Badge">
+              <TextInput
+                type="text"
+                value={productForm.badge}
+                onChange={(e) =>
+                  setProductForm((prev) => ({ ...prev, badge: e.target.value }))
+                }
+              />
+            </Field>
+
+            <div className="md:col-span-2">
+              <Field label="Descriere scurtă">
+                <TextInput
+                  type="text"
+                  value={productForm.shortDescription}
+                  onChange={(e) =>
+                    setProductForm((prev) => ({
+                      ...prev,
+                      shortDescription: e.target.value,
+                    }))
+                  }
+                />
+              </Field>
+            </div>
+
+            <div className="md:col-span-2">
+              <Field label="Descriere completă">
+                <TextArea
+                  rows={5}
+                  value={productForm.description}
+                  onChange={(e) =>
+                    setProductForm((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
+                />
+              </Field>
+            </div>
+
+            <div className="md:col-span-2 flex items-center gap-3">
+              <input
+                id="productActive"
+                type="checkbox"
+                checked={productForm.isActive}
+                onChange={(e) =>
+                  setProductForm((prev) => ({ ...prev, isActive: e.target.checked }))
+                }
+                className="h-5 w-5 rounded border-slate-600 bg-slate-800 text-cyan-500"
+              />
+              <label htmlFor="productActive" className="text-sm text-slate-300">
+                Produs activ
+              </label>
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowProductEditModal(false);
+                setShowCreateProductModal(false);
+                setSelectedProduct(null);
+                setProductForm(emptyProductForm);
+              }}
+            >
+              <X className="mr-2 h-4 w-4" />
+              Anulează
+            </Button>
+
+            <Button
+              type="button"
+              onClick={showCreateProductModal ? handleCreateProduct : handleSaveProduct}
+              disabled={productBusy}
+              className="gap-2"
+            >
+              {showCreateProductModal ? (
+                <Plus className="h-4 w-4" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              {productBusy
+                ? showCreateProductModal
+                  ? "Se creează..."
+                  : "Se salvează..."
+                : showCreateProductModal
+                ? "Creează produs"
+                : "Salvează"}
+            </Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

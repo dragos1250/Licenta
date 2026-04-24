@@ -13,14 +13,18 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  name         String?
-  phone        String?
-  dateOfBirth  DateTime?
-  passwordHash String
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  email           String    @unique
+  name            String?
+  phone           String?
+  dateOfBirth     DateTime?
+  passwordHash    String?
+  googleId        String?   @unique
+  avatarUrl       String?
+  emailVerified   Boolean   @default(false)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   userRoles UserRole[]
   wishlists Wishlist[]
@@ -34,7 +38,40 @@ model User {
   builds    Build[]
   addresses UserAddress[]
 
+  verificationTokens  EmailVerificationToken[]
+  passwordResetTokens PasswordResetToken[]
+
   @@map("Users")
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("EmailVerificationTokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("PasswordResetTokens")
 }
 
 model UserAddress {
@@ -160,20 +197,32 @@ model ProductSpecification {
   @@map("ProductSpecifications")
 }
 
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model ProductReview {
-  id               String   @id @default(cuid())
+  id               String  @id @default(cuid())
   productId        String
   userId           String?
   authorName       String
   title            String?
   content          String
   rating           Int
-  verifiedPurchase Boolean  @default(false)
-  helpfulCount     Int      @default(0)
-  notHelpfulCount  Int      @default(0)
-  isPublished      Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  verifiedPurchase Boolean @default(false)
+  helpfulCount     Int     @default(0)
+  notHelpfulCount  Int     @default(0)
+
+  isPublished      Boolean          @default(false)
+  moderationStatus ModerationStatus @default(PENDING)
+  moderatedAt      DateTime?
+  moderatedById    String?
+  rejectionReason  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -181,19 +230,26 @@ model ProductReview {
   @@index([productId, createdAt])
   @@index([productId, rating])
   @@index([productId, isPublished, createdAt])
+  @@index([moderationStatus, createdAt])
   @@index([userId])
   @@map("ProductReviews")
 }
 
 model ProductQuestion {
-  id          String   @id @default(cuid())
-  productId   String
-  userId      String?
-  authorName  String
-  question    String
-  isPublished Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String  @id @default(cuid())
+  productId  String
+  userId     String?
+  authorName String
+  question   String
+
+  isPublished      Boolean          @default(false)
+  moderationStatus ModerationStatus @default(PENDING)
+  moderatedAt      DateTime?
+  moderatedById    String?
+  rejectionReason  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -202,31 +258,39 @@ model ProductQuestion {
 
   @@index([productId, createdAt])
   @@index([productId, isPublished, createdAt])
+  @@index([moderationStatus, createdAt])
   @@index([userId])
   @@map("ProductQuestions")
 }
 
 model ProductAnswer {
-  id          String   @id @default(cuid())
-  questionId  String
-  userId      String?
-  authorName  String
-  answer      String
-  isOfficial  Boolean  @default(false)
-  isPublished Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String  @id @default(cuid())
+  questionId String
+  userId     String?
+  authorName String
+  answer     String
+  isOfficial Boolean @default(false)
+
+  isPublished      Boolean          @default(false)
+  moderationStatus ModerationStatus @default(PENDING)
+  moderatedAt      DateTime?
+  moderatedById    String?
+  rejectionReason  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   question ProductQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
   user     User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([questionId, createdAt])
   @@index([questionId, isPublished, createdAt])
+  @@index([moderationStatus, createdAt])
   @@index([userId])
   @@map("ProductAnswers")
 }
 
-//CosW
+//Cos
 
 model Cart {
   id     String @id @default(cuid())
@@ -381,7 +445,6 @@ model OrderItem {
   @@map("OrderItems")
 }
 
-
 //builds
 
 model Build {
@@ -406,18 +469,18 @@ model Build {
 }
 
 model BuildItem {
-  id         String   @id @default(cuid())
-  buildId     String
-  productId   String?
-  slotKey     String
-  slotLabel   String
-  productName String
-  brand       String
-  category    String
-  imageUrl    String?
+  id           String   @id @default(cuid())
+  buildId      String
+  productId    String?
+  slotKey      String
+  slotLabel    String
+  productName  String
+  brand        String
+  category     String
+  imageUrl     String?
   unitPriceRon Int
-  quantity    Int      @default(1)
-  createdAt   DateTime @default(now())
+  quantity     Int      @default(1)
+  createdAt    DateTime @default(now())
 
   build   Build    @relation(fields: [buildId], references: [id], onDelete: Cascade)
   product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)

@@ -9,14 +9,14 @@ import {
   User,
   Sparkles,
   ArrowRight,
-  Chrome,
-  Github,
 } from "lucide-react";
 import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
+import GoogleSignInButton from "../components/GoogleSignInButton";
 
 export default function Login() {
   const navigate = useNavigate();
+  const { refreshAuth } = useAuth();
 
   const [activeTab, setActiveTab] = useState("login");
   const [showPassword, setShowPassword] = useState(false);
@@ -25,7 +25,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-  const { refreshAuth } = useAuth();
 
   const [loginForm, setLoginForm] = useState({
     email: "",
@@ -48,6 +47,7 @@ export default function Login() {
     if (error?.response?.data?.details?.length) {
       return error.response.data.details[0].message;
     }
+
     return error?.response?.data?.error || "A apărut o eroare.";
   };
 
@@ -92,21 +92,68 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await api.post("/auth/register", {
+      const { data } = await api.post("/auth/register", {
         name: registerForm.name,
         email: registerForm.email,
         password: registerForm.password,
       });
 
-      await refreshAuth();
+      setSuccessMsg(
+        data?.message ||
+          "Cont creat cu succes. Verifică emailul pentru activarea contului."
+      );
 
-      setSuccessMsg("Cont creat cu succes! Ești autentificat.");
-      navigate(getRedirectTo());
+      setLoginForm((prev) => ({
+        ...prev,
+        email: registerForm.email,
+        password: "",
+      }));
+
+      setRegisterForm({
+        name: "",
+        email: "",
+        password: "",
+        acceptedTerms: false,
+      });
+
+      setActiveTab("login");
     } catch (error) {
       setErrorMsg(getApiErrorMessage(error));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleSuccess = async (data) => {
+    try {
+      await refreshAuth();
+    } catch (_) {}
+
+    setErrorMsg("");
+    setSuccessMsg(data?.message || "Autentificare cu Google reușită.");
+    navigate(getRedirectTo());
+  };
+
+  const handleGoogleNeedsVerification = (data) => {
+    setErrorMsg("");
+    setSuccessMsg(
+      data?.message ||
+        "Contul a fost creat. Verifică emailul pentru activarea contului."
+    );
+
+    if (data?.user?.email) {
+      setLoginForm((prev) => ({
+        ...prev,
+        email: data.user.email,
+      }));
+    }
+
+    setActiveTab("login");
+  };
+
+  const handleGoogleError = (error) => {
+    setErrorMsg(getApiErrorMessage(error));
+    setSuccessMsg("");
   };
 
   const featureItems = [
@@ -137,7 +184,6 @@ export default function Login() {
 
   return (
     <div className="relative flex min-h-[calc(100vh-80px)] items-center justify-center px-6 py-12">
-      {/* Background glows */}
       <div className="absolute inset-0 -z-10">
         <div className="absolute left-1/4 top-1/4 h-96 w-96 rounded-full bg-cyan-500/10 blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 h-96 w-96 rounded-full bg-purple-500/10 blur-3xl" />
@@ -149,7 +195,6 @@ export default function Login() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55 }}
         >
-          {/* Logo + subtitle */}
           <div className="mb-8 text-center">
             <Link to="/" className="mb-4 inline-flex items-center gap-3">
               <div className="relative">
@@ -167,12 +212,9 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Main card */}
           <div className="overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-900/80 backdrop-blur-xl">
             <div className="grid md:grid-cols-2">
-              {/* LEFT: Form */}
               <div className="p-8 md:p-10">
-                {/* Tabs custom */}
                 <div className="mb-6 grid grid-cols-2 rounded-xl border border-slate-700/50 bg-slate-800/50 p-1">
                   <button
                     type="button"
@@ -199,7 +241,6 @@ export default function Login() {
                   </button>
                 </div>
 
-                {/* Alerts */}
                 {errorMsg && (
                   <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
                     {errorMsg}
@@ -212,7 +253,6 @@ export default function Login() {
                   </div>
                 )}
 
-                {/* LOGIN */}
                 {activeTab === "login" && (
                   <div className="space-y-6">
                     <div>
@@ -286,12 +326,13 @@ export default function Login() {
                           />
                           Ține-mă minte
                         </label>
-                        <button
-                          type="button"
+
+                        <Link
+                          to="/forgot-password"
                           className="text-sm text-cyan-400 hover:text-cyan-300"
                         >
                           Ai uitat parola?
-                        </button>
+                        </Link>
                       </div>
 
                       <button
@@ -315,27 +356,16 @@ export default function Login() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        className="flex items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-slate-300 transition hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400"
-                      >
-                        <Chrome className="h-5 w-5" />
-                        Google
-                      </button>
-
-                      <button
-                        type="button"
-                        className="flex items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-slate-300 transition hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400"
-                      >
-                        <Github className="h-5 w-5" />
-                        GitHub
-                      </button>
+                    <div className="flex justify-center">
+                      <GoogleSignInButton
+                        onSuccess={handleGoogleSuccess}
+                        onNeedsVerification={handleGoogleNeedsVerification}
+                        onError={handleGoogleError}
+                      />
                     </div>
                   </div>
                 )}
 
-                {/* REGISTER */}
                 {activeTab === "register" && (
                   <div className="space-y-6">
                     <div>
@@ -410,9 +440,7 @@ export default function Login() {
                           />
                           <button
                             type="button"
-                            onClick={() =>
-                              setShowRegisterPassword((v) => !v)
-                            }
+                            onClick={() => setShowRegisterPassword((v) => !v)}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
                           >
                             {showRegisterPassword ? (
@@ -478,28 +506,17 @@ export default function Login() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        className="flex items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-slate-300 transition hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400"
-                      >
-                        <Chrome className="h-5 w-5" />
-                        Google
-                      </button>
-
-                      <button
-                        type="button"
-                        className="flex items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-2.5 text-slate-300 transition hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400"
-                      >
-                        <Github className="h-5 w-5" />
-                        GitHub
-                      </button>
+                    <div className="flex justify-center">
+                      <GoogleSignInButton
+                        onSuccess={handleGoogleSuccess}
+                        onNeedsVerification={handleGoogleNeedsVerification}
+                        onError={handleGoogleError}
+                      />
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* RIGHT: Why ConfigEXP */}
               <div className="relative overflow-hidden bg-gradient-to-br from-cyan-500/10 via-blue-500/10 to-purple-500/10 p-8 md:p-10">
                 <div className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-cyan-500/20 blur-3xl" />
                 <div className="absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-purple-500/20 blur-3xl" />
@@ -517,6 +534,7 @@ export default function Login() {
                   <div className="space-y-6">
                     {featureItems.map((feature, index) => {
                       const Icon = feature.icon;
+
                       return (
                         <motion.div
                           key={feature.title}
@@ -530,6 +548,7 @@ export default function Login() {
                           >
                             <Icon className={`h-6 w-6 ${feature.iconColor}`} />
                           </div>
+
                           <div>
                             <h4 className="mb-1 font-semibold text-white">
                               {feature.title}
@@ -552,6 +571,7 @@ export default function Login() {
                         Configurații create
                       </div>
                     </div>
+
                     <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-4 backdrop-blur-sm">
                       <div className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-2xl font-bold text-transparent">
                         98%
@@ -563,7 +583,6 @@ export default function Login() {
                   </div>
                 </div>
               </div>
-              {/* end right */}
             </div>
           </div>
         </motion.div>

@@ -22,6 +22,14 @@ const questionSchema = z.object({
     .max(2000, "Întrebarea este prea lungă."),
 });
 
+const answerSchema = z.object({
+  answer: z
+    .string()
+    .trim()
+    .min(10, "Răspunsul trebuie să aibă minim 10 caractere.")
+    .max(3000, "Răspunsul este prea lung."),
+});
+
 export class ProductsController {
   constructor(productsService) {
     this.productsService = productsService;
@@ -75,7 +83,8 @@ export class ProductsController {
       });
 
       return res.status(201).json({
-        message: "Review adăugat cu succes.",
+        message:
+          "Review-ul a fost trimis și așteaptă aprobarea unui administrator.",
         review: result,
       });
     } catch (e) {
@@ -107,11 +116,45 @@ export class ProductsController {
       });
 
       return res.status(201).json({
-        message: "Întrebarea a fost trimisă.",
+        message:
+          "Întrebarea a fost trimisă și așteaptă aprobarea unui administrator.",
         question: result,
       });
     } catch (e) {
       if (e.message === "Produsul nu există.") {
+        return res.status(400).json({ error: e.message });
+      }
+      next(e);
+    }
+  };
+
+  addAnswer = async (req, res, next) => {
+    try {
+      const parsed = answerSchema.safeParse(req.body);
+
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Date invalide.",
+          details: parsed.error.issues,
+        });
+      }
+
+      const result = await this.productsService.addAnswer(
+        req.params.questionId,
+        {
+          userId: req.auth.userId,
+          email: req.auth.email,
+          ...parsed.data,
+        }
+      );
+
+      return res.status(201).json({
+        message:
+          "Răspunsul a fost trimis și așteaptă aprobarea unui administrator.",
+        answer: result,
+      });
+    } catch (e) {
+      if (e.message === "Întrebarea nu există sau nu este publică.") {
         return res.status(400).json({ error: e.message });
       }
       next(e);

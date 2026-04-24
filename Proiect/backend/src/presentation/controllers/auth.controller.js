@@ -15,14 +15,49 @@ const loginSchema = z.object({
   password: z.string().min(1, "Parola este obligatorie."),
 });
 
+const googleLoginSchema = z.object({
+  credential: z.string().min(1, "Credential Google este obligatoriu."),
+});
+
+const resendVerificationSchema = z.object({
+  email: z.string().email("Email invalid."),
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email("Email invalid."),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1, "Tokenul este obligatoriu."),
+  newPassword: z
+    .string()
+    .min(8, "Parola trebuie să aibă minim 8 caractere.")
+    .regex(/[A-Z]/, "Parola trebuie să conțină o literă mare.")
+    .regex(/[0-9]/, "Parola trebuie să conțină un număr."),
+});
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Parola curentă este obligatorie."),
+  newPassword: z
+    .string()
+    .min(8, "Parola trebuie să aibă minim 8 caractere.")
+    .regex(/[A-Z]/, "Parola trebuie să conțină o literă mare.")
+    .regex(/[0-9]/, "Parola trebuie să conțină un număr."),
+});
+
+const deleteAccountSchema = z.object({
+  confirmationText: z.string().min(1, "Confirmarea este obligatorie."),
+  currentPassword: z.string().optional(),
+});
+
 function getCookieOptions() {
   const isProd = process.env.NODE_ENV === "production";
 
   return {
     httpOnly: true,
-    secure: isProd, // true în producție (HTTPS)
+    secure: isProd,
     sameSite: isProd ? "none" : "lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 zile
+    maxAge: 7 * 24 * 60 * 60 * 1000,
     path: "/",
   };
 }
@@ -42,14 +77,9 @@ export class AuthController {
         });
       }
 
-      const { user, token } = await this.authService.register(parsed.data);
+      const result = await this.authService.register(parsed.data);
 
-      res.cookie("access_token", token, getCookieOptions());
-
-      return res.status(201).json({
-        message: "Cont creat cu succes.",
-        user,
-      });
+      return res.status(201).json(result);
     } catch (error) {
       next(error);
     }
@@ -73,6 +103,163 @@ export class AuthController {
         message: "Autentificare reușită.",
         user,
       });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  googleLogin = async (req, res, next) => {
+    try {
+      const parsed = googleLoginSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Date invalide.",
+          details: parsed.error.issues,
+        });
+      }
+
+      const result = await this.authService.loginWithGoogle(parsed.data);
+
+      if (result.token) {
+        res.cookie("access_token", result.token, getCookieOptions());
+
+        return res.json({
+          message: "Autentificare cu Google reușită.",
+          user: result.user,
+        });
+      }
+
+      return res.status(201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  verifyEmail = async (req, res, next) => {
+    try {
+      const tokenFromQuery = req.query.token;
+
+      if (!tokenFromQuery || typeof tokenFromQuery !== "string") {
+        return res.status(400).json({
+          error: "Tokenul de verificare lipsește sau este invalid.",
+        });
+      }
+
+      const { user, token, message } = await this.authService.verifyEmail(
+        tokenFromQuery
+      );
+
+      res.cookie("access_token", token, getCookieOptions());
+
+      return res.json({
+        message,
+        user,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  resendVerificationEmail = async (req, res, next) => {
+    try {
+      const parsed = resendVerificationSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Date invalide.",
+          details: parsed.error.issues,
+        });
+      }
+
+      const result = await this.authService.resendVerificationEmail(parsed.data);
+
+      return res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  forgotPassword = async (req, res, next) => {
+    try {
+      const parsed = forgotPasswordSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Date invalide.",
+          details: parsed.error.issues,
+        });
+      }
+
+      const result = await this.authService.forgotPassword(parsed.data);
+
+      return res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  resetPassword = async (req, res, next) => {
+    try {
+      const parsed = resetPasswordSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Date invalide.",
+          details: parsed.error.issues,
+        });
+      }
+
+      const result = await this.authService.resetPassword(parsed.data);
+
+      return res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  changePassword = async (req, res, next) => {
+    try {
+      const parsed = changePasswordSchema.safeParse(req.body);
+
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Date invalide.",
+          details: parsed.error.issues,
+        });
+      }
+
+      const result = await this.authService.changePassword(
+        req.auth.userId,
+        parsed.data
+      );
+
+      return res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  deleteAccount = async (req, res, next) => {
+    try {
+      const parsed = deleteAccountSchema.safeParse(req.body);
+
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Date invalide.",
+          details: parsed.error.issues,
+        });
+      }
+
+      const result = await this.authService.deleteAccount(
+        req.auth.userId,
+        parsed.data
+      );
+
+      res.clearCookie("access_token", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        path: "/",
+      });
+
+      return res.json(result);
     } catch (error) {
       next(error);
     }

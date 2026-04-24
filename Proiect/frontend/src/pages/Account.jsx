@@ -9,7 +9,6 @@ import {
   CreditCard,
   Package,
   Settings,
-  Bell,
   Shield,
   History,
   Heart,
@@ -21,6 +20,15 @@ import {
   Plus,
   X,
   Check,
+  ReceiptText,
+  CalendarDays,
+  Truck,
+  PackageOpen,
+  Lock,
+  Eye,
+  EyeOff,
+  KeyRound,
+  AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import api from "../lib/api";
@@ -103,6 +111,30 @@ function statusLabel(status) {
   }
 }
 
+function shippingMethodLabel(method) {
+  switch (method) {
+    case "COURIER_STANDARD":
+      return "Curier standard";
+    case "COURIER_EXPRESS":
+      return "Curier expres";
+    case "EASYBOX":
+      return "EasyBox";
+    default:
+      return "—";
+  }
+}
+
+function paymentMethodLabel(method) {
+  switch (method) {
+    case "CARD":
+      return "Card";
+    case "CASH_ON_DELIVERY":
+      return "Ramburs";
+    default:
+      return "—";
+  }
+}
+
 function formatRon(value) {
   return Number(value || 0).toLocaleString("ro-RO");
 }
@@ -155,10 +187,7 @@ function hasAdminRole(source) {
 
   return roles.some((userRole) => {
     const roleName =
-      userRole?.role?.name ||
-      userRole?.name ||
-      userRole?.roleName ||
-      "";
+      userRole?.role?.name || userRole?.name || userRole?.roleName || "";
 
     return String(roleName).trim().toLowerCase() === "admin";
   });
@@ -186,6 +215,10 @@ export default function Account() {
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [ordersError, setOrdersError] = useState("");
   const [orders, setOrders] = useState([]);
+  const [orderDetailsLoadingId, setOrderDetailsLoadingId] = useState("");
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [orderModalError, setOrderModalError] = useState("");
 
   // Builds
   const [buildsLoading, setBuildsLoading] = useState(true);
@@ -214,6 +247,30 @@ export default function Account() {
     dateOfBirth: "",
   });
   const [profileRoles, setProfileRoles] = useState([]);
+
+  // Change password
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [changePasswordForm, setChangePasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [changePasswordLoading, setChangePasswordLoading] = useState(false);
+  const [changePasswordError, setChangePasswordError] = useState("");
+  const [changePasswordSuccess, setChangePasswordSuccess] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Delete account
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [deleteAccountForm, setDeleteAccountForm] = useState({
+    confirmationText: "",
+    currentPassword: "",
+  });
+  const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
+  const [deleteAccountError, setDeleteAccountError] = useState("");
+  const [showDeletePassword, setShowDeletePassword] = useState(false);
 
   // Addresses
   const [addressesLoading, setAddressesLoading] = useState(true);
@@ -277,6 +334,29 @@ export default function Account() {
     } finally {
       setOrdersLoading(false);
     }
+  };
+
+  const openOrderDetails = async (orderId) => {
+    try {
+      setOrderModalError("");
+      setOrderDetailsLoadingId(orderId);
+
+      const res = await api.get(`/orders/my/${orderId}`);
+      setSelectedOrder(res.data || null);
+      setShowOrderModal(true);
+    } catch (e) {
+      setOrderModalError(
+        e?.response?.data?.error || "Nu am putut încărca detaliile comenzii."
+      );
+    } finally {
+      setOrderDetailsLoadingId("");
+    }
+  };
+
+  const closeOrderModal = () => {
+    setShowOrderModal(false);
+    setSelectedOrder(null);
+    setOrderModalError("");
   };
 
   const fetchMyBuilds = async () => {
@@ -472,6 +552,130 @@ export default function Account() {
     }
   };
 
+  const openChangePasswordModal = () => {
+    setChangePasswordError("");
+    setChangePasswordSuccess("");
+    setChangePasswordForm({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+    setShowChangePasswordModal(true);
+  };
+
+  const closeChangePasswordModal = () => {
+    setShowChangePasswordModal(false);
+    setChangePasswordError("");
+    setChangePasswordSuccess("");
+    setChangePasswordForm({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+  };
+
+  const handleChangePasswordField = (field, value) => {
+    setChangePasswordError("");
+    setChangePasswordSuccess("");
+    setChangePasswordForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleChangePasswordSubmit = async () => {
+    setChangePasswordError("");
+    setChangePasswordSuccess("");
+
+    if (changePasswordForm.newPassword !== changePasswordForm.confirmPassword) {
+      setChangePasswordError("Parolele noi nu coincid.");
+      return;
+    }
+
+    try {
+      setChangePasswordLoading(true);
+
+      const { data } = await api.post("/auth/change-password", {
+        currentPassword: changePasswordForm.currentPassword,
+        newPassword: changePasswordForm.newPassword,
+      });
+
+      setChangePasswordSuccess(
+        data?.message || "Parola a fost schimbată cu succes."
+      );
+
+      setChangePasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (e) {
+      setChangePasswordError(
+        e?.response?.data?.error ||
+          e?.response?.data?.details?.[0]?.message ||
+          "Nu am putut schimba parola."
+      );
+    } finally {
+      setChangePasswordLoading(false);
+    }
+  };
+
+  const openDeleteAccountModal = () => {
+    setDeleteAccountError("");
+    setDeleteAccountForm({
+      confirmationText: "",
+      currentPassword: "",
+    });
+    setShowDeletePassword(false);
+    setShowDeleteAccountModal(true);
+  };
+
+  const closeDeleteAccountModal = () => {
+    setShowDeleteAccountModal(false);
+    setDeleteAccountError("");
+    setDeleteAccountForm({
+      confirmationText: "",
+      currentPassword: "",
+    });
+  };
+
+  const handleDeleteAccountField = (field, value) => {
+    setDeleteAccountError("");
+    setDeleteAccountForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleDeleteAccountSubmit = async () => {
+    setDeleteAccountError("");
+
+    try {
+      setDeleteAccountLoading(true);
+
+      const { data } = await api.delete("/auth/delete-account", {
+        data: {
+          confirmationText: deleteAccountForm.confirmationText,
+          currentPassword: deleteAccountForm.currentPassword || undefined,
+        },
+      });
+
+      alert(data?.message || "Contul a fost șters definitiv.");
+      window.location.href = "/";
+    } catch (e) {
+      setDeleteAccountError(
+        e?.response?.data?.error ||
+          e?.response?.data?.details?.[0]?.message ||
+          "Nu am putut șterge contul."
+      );
+    } finally {
+      setDeleteAccountLoading(false);
+    }
+  };
+
   const getFreshAddressForm = () => ({
     ...emptyAddressForm,
     recipientName: profileForm.name || "",
@@ -574,9 +778,7 @@ export default function Account() {
   };
 
   const handleDeleteAddress = async (addressId) => {
-    const confirmed = window.confirm(
-      "Sigur vrei să ștergi această adresă?"
-    );
+    const confirmed = window.confirm("Sigur vrei să ștergi această adresă?");
 
     if (!confirmed) return;
 
@@ -614,7 +816,6 @@ export default function Account() {
       window.removeEventListener("wishlist:updated", onWishlistUpdated);
       window.removeEventListener("builds:updated", onBuildsUpdated);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const ordersCount = orders.length;
@@ -781,6 +982,12 @@ export default function Account() {
                 </div>
               )}
 
+              {orderModalError && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                  {orderModalError}
+                </div>
+              )}
+
               {ordersLoading ? (
                 <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 text-slate-300">
                   Se încarcă comenzile...
@@ -844,9 +1051,12 @@ export default function Account() {
                             variant="outline"
                             size="sm"
                             type="button"
-                            onClick={() => alert("Detalii comandă (în curând)")}
+                            onClick={() => openOrderDetails(order.id)}
+                            disabled={orderDetailsLoadingId === order.id}
                           >
-                            Detalii
+                            {orderDetailsLoadingId === order.id
+                              ? "Se încarcă..."
+                              : "Detalii"}
                           </Button>
 
                           {order.status === "DELIVERED" && (
@@ -864,6 +1074,255 @@ export default function Account() {
                     </motion.div>
                   );
                 })
+              )}
+
+              {showOrderModal && selectedOrder && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+                  <div className="relative max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-slate-700/60 bg-slate-950/95 p-6 shadow-2xl backdrop-blur-xl">
+                    <button
+                      type="button"
+                      onClick={closeOrderModal}
+                      className="absolute right-4 top-4 rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+
+                    <div className="mb-6 flex flex-col gap-4 border-b border-slate-700/50 pb-6 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <div className="mb-2 flex items-center gap-3">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 ring-1 ring-cyan-500/30">
+                            <ReceiptText className="h-5 w-5 text-cyan-400" />
+                          </div>
+
+                          <div>
+                            <h3 className="text-2xl font-bold text-white">
+                              Comandă #{selectedOrder.orderNumber || selectedOrder.id}
+                            </h3>
+                            <p className="text-sm text-slate-400">
+                              Detalii complete despre comandă
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-400">
+                          <div className="inline-flex items-center gap-2">
+                            <CalendarDays className="h-4 w-4 text-cyan-400" />
+                            {formatDateRo(selectedOrder.createdAt)}
+                          </div>
+
+                          <Badge className={statusBadgeClass(selectedOrder.status)}>
+                            {statusLabel(selectedOrder.status)}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="text-left md:text-right">
+                        <div className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-3xl font-bold text-transparent">
+                          {formatRon(selectedOrder.totalRon)} RON
+                        </div>
+                        <div className="text-xs text-slate-400">Total comandă</div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-6 lg:grid-cols-3">
+                      <div className="space-y-6 lg:col-span-2">
+                        <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+                          <div className="mb-4 flex items-center gap-2">
+                            <PackageOpen className="h-5 w-5 text-cyan-400" />
+                            <h4 className="text-lg font-semibold text-white">
+                              Produse
+                            </h4>
+                          </div>
+
+                          <div className="space-y-3">
+                            {(selectedOrder.items || []).map((item) => (
+                              <div
+                                key={item.id}
+                                className="rounded-lg border border-slate-700/40 bg-slate-800/30 p-4"
+                              >
+                                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                  <div className="flex-1">
+                                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                                      <Badge className="border border-cyan-500/30 bg-cyan-500/10 text-cyan-400">
+                                        {item.category}
+                                      </Badge>
+                                      <span className="text-xs text-slate-500">
+                                        {item.brand}
+                                      </span>
+                                    </div>
+
+                                    <h5 className="font-medium text-white">
+                                      {item.productName}
+                                    </h5>
+
+                                    <p className="mt-1 text-sm text-slate-400">
+                                      Cantitate: {item.quantity} ×{" "}
+                                      {formatRon(item.unitPriceRon)} RON
+                                    </p>
+                                  </div>
+
+                                  <div className="text-left md:text-right">
+                                    <div className="font-semibold text-cyan-400">
+                                      {formatRon(item.lineTotalRon)} RON
+                                    </div>
+                                    <div className="text-xs text-slate-500">
+                                      Subtotal produs
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="grid gap-6 md:grid-cols-2">
+                          <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+                            <div className="mb-4 flex items-center gap-2">
+                              <Truck className="h-5 w-5 text-cyan-400" />
+                              <h4 className="text-lg font-semibold text-white">
+                                Livrare
+                              </h4>
+                            </div>
+
+                            <div className="space-y-2 text-sm text-slate-300">
+                              <p>
+                                <span className="text-slate-400">Metodă:</span>{" "}
+                                {shippingMethodLabel(selectedOrder.shippingMethod)}
+                              </p>
+
+                              {selectedOrder.shippingMethod === "EASYBOX" ? (
+                                <>
+                                  <p>
+                                    <span className="text-slate-400">Locker:</span>{" "}
+                                    {selectedOrder.easyboxLockerName || "—"}
+                                  </p>
+                                  <p>
+                                    <span className="text-slate-400">Oraș:</span>{" "}
+                                    {selectedOrder.easyboxCity || "—"}
+                                  </p>
+                                </>
+                              ) : (
+                                <>
+                                  <p>
+                                    <span className="text-slate-400">Adresă:</span>{" "}
+                                    {selectedOrder.shippingStreet || "—"}
+                                  </p>
+                                  <p>
+                                    <span className="text-slate-400">Localitate:</span>{" "}
+                                    {selectedOrder.shippingCity || "—"},{" "}
+                                    {selectedOrder.shippingCounty || "—"}
+                                  </p>
+                                  <p>
+                                    <span className="text-slate-400">Cod poștal:</span>{" "}
+                                    {selectedOrder.shippingPostalCode || "—"}
+                                  </p>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+                            <div className="mb-4 flex items-center gap-2">
+                              <CreditCard className="h-5 w-5 text-cyan-400" />
+                              <h4 className="text-lg font-semibold text-white">
+                                Plată
+                              </h4>
+                            </div>
+
+                            <div className="space-y-2 text-sm text-slate-300">
+                              <p>
+                                <span className="text-slate-400">Metodă:</span>{" "}
+                                {paymentMethodLabel(selectedOrder.paymentMethod)}
+                              </p>
+                              <p>
+                                <span className="text-slate-400">Status:</span>{" "}
+                                {statusLabel(selectedOrder.status)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-6">
+                        <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+                          <div className="mb-4 flex items-center gap-2">
+                            <User className="h-5 w-5 text-cyan-400" />
+                            <h4 className="text-lg font-semibold text-white">
+                              Client
+                            </h4>
+                          </div>
+
+                          <div className="space-y-2 text-sm text-slate-300">
+                            <p>{selectedOrder.customerName || "—"}</p>
+                            <p>{selectedOrder.customerEmail || "—"}</p>
+                            <p>{selectedOrder.customerPhone || "—"}</p>
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+                          <div className="mb-4 flex items-center gap-2">
+                            <ReceiptText className="h-5 w-5 text-cyan-400" />
+                            <h4 className="text-lg font-semibold text-white">
+                              Sumar
+                            </h4>
+                          </div>
+
+                          <div className="space-y-3 text-sm">
+                            <div className="flex items-center justify-between text-slate-300">
+                              <span>Subtotal produse</span>
+                              <span>{formatRon(selectedOrder.subtotalRon)} RON</span>
+                            </div>
+
+                            <div className="flex items-center justify-between text-slate-300">
+                              <span>TVA</span>
+                              <span>{formatRon(selectedOrder.vatRon)} RON</span>
+                            </div>
+
+                            <div className="flex items-center justify-between text-slate-300">
+                              <span>Transport</span>
+                              <span>{formatRon(selectedOrder.shippingFeeRon)} RON</span>
+                            </div>
+
+                            <div className="flex items-center justify-between text-slate-300">
+                              <span>Taxă plată</span>
+                              <span>{formatRon(selectedOrder.paymentFeeRon)} RON</span>
+                            </div>
+
+                            <div className="border-t border-slate-700 pt-3">
+                              <div className="flex items-center justify-between font-semibold text-white">
+                                <span>Total</span>
+                                <span className="text-cyan-400">
+                                  {formatRon(selectedOrder.totalRon)} RON
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="flex-1"
+                            onClick={closeOrderModal}
+                          >
+                            Închide
+                          </Button>
+
+                          {selectedOrder.status === "DELIVERED" && (
+                            <Button
+                              type="button"
+                              className="flex-1"
+                              onClick={() => alert("Comandă din nou (în curând)")}
+                            >
+                              Comandă din nou
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -1137,10 +1596,7 @@ export default function Account() {
                           type="date"
                           value={profileForm.dateOfBirth}
                           onChange={(e) =>
-                            handleProfileFieldChange(
-                              "dateOfBirth",
-                              e.target.value
-                            )
+                            handleProfileFieldChange("dateOfBirth", e.target.value)
                           }
                           className="flex-1 bg-transparent text-white focus:outline-none"
                         />
@@ -1369,10 +1825,7 @@ export default function Account() {
                           type="text"
                           value={addressForm.recipientName}
                           onChange={(e) =>
-                            handleAddressFieldChange(
-                              "recipientName",
-                              e.target.value
-                            )
+                            handleAddressFieldChange("recipientName", e.target.value)
                           }
                           placeholder="Nume destinatar"
                           className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:outline-none"
@@ -1458,10 +1911,7 @@ export default function Account() {
                           type="text"
                           value={addressForm.postalCode}
                           onChange={(e) =>
-                            handleAddressFieldChange(
-                              "postalCode",
-                              e.target.value
-                            )
+                            handleAddressFieldChange("postalCode", e.target.value)
                           }
                           className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:outline-none"
                         />
@@ -1473,10 +1923,7 @@ export default function Account() {
                           type="checkbox"
                           checked={addressForm.isDefault}
                           onChange={(e) =>
-                            handleAddressFieldChange(
-                              "isDefault",
-                              e.target.checked
-                            )
+                            handleAddressFieldChange("isDefault", e.target.checked)
                           }
                           className="h-5 w-5 rounded border-slate-600 bg-slate-800 text-cyan-500"
                         />
@@ -1518,53 +1965,8 @@ export default function Account() {
           {tab === "settings" && (
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-white">
-                Setări și preferințe
+                Setări și securitate
               </h2>
-
-              <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm">
-                <div className="mb-4 flex items-center gap-3">
-                  <Bell className="h-5 w-5 text-cyan-400" />
-                  <h3 className="font-semibold text-white">Notificări</h3>
-                </div>
-
-                <div className="space-y-4">
-                  {[
-                    {
-                      label: "Notificări email pentru comenzi",
-                      description: "Primește actualizări despre comenzile tale",
-                      enabled: true,
-                    },
-                    {
-                      label: "Newsletter și oferte",
-                      description: "Oferte exclusive și noutăți",
-                      enabled: true,
-                    },
-                    {
-                      label: "Alerte de preț",
-                      description:
-                        "Notificări când produsele favorite se ieftinesc",
-                      enabled: false,
-                    },
-                  ].map((setting) => (
-                    <div
-                      key={setting.label}
-                      className="flex items-center justify-between gap-4"
-                    >
-                      <div>
-                        <p className="font-medium text-white">{setting.label}</p>
-                        <p className="text-sm text-slate-400">
-                          {setting.description}
-                        </p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        defaultChecked={setting.enabled}
-                        className="h-5 w-5 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-900"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
 
               <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm">
                 <div className="mb-4 flex items-center gap-3">
@@ -1577,15 +1979,10 @@ export default function Account() {
                     variant="outline"
                     className="w-full justify-start"
                     type="button"
+                    onClick={openChangePasswordModal}
                   >
+                    <Lock className="mr-2 h-4 w-4" />
                     Schimbă parola
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    type="button"
-                  >
-                    Autentificare în doi pași
                   </Button>
                 </div>
               </div>
@@ -1606,6 +2003,7 @@ export default function Account() {
 
                   <button
                     type="button"
+                    onClick={openDeleteAccountModal}
                     className="flex w-full items-center justify-start rounded-lg border border-red-500/30 px-4 py-2.5 text-sm font-semibold text-red-400 transition hover:border-red-500 hover:bg-red-500/10"
                   >
                     Șterge contul
@@ -1616,6 +2014,270 @@ export default function Account() {
           )}
         </motion.div>
       </div>
+
+      {showChangePasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="relative w-full max-w-2xl rounded-2xl border border-slate-700/60 bg-slate-950/95 p-6 shadow-2xl backdrop-blur-xl">
+            <button
+              type="button"
+              onClick={closeChangePasswordModal}
+              className="absolute right-4 top-4 rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="mb-6">
+              <h3 className="text-2xl font-bold text-white">Schimbă parola</h3>
+              <p className="mt-1 text-sm text-slate-400">
+                Actualizează parola contului tău în siguranță.
+              </p>
+            </div>
+
+            {changePasswordError && (
+              <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                {changePasswordError}
+              </div>
+            )}
+
+            {changePasswordSuccess && (
+              <div className="mb-4 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">
+                {changePasswordSuccess}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-400">
+                  Parola curentă
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type={showCurrentPassword ? "text" : "password"}
+                    value={changePasswordForm.currentPassword}
+                    onChange={(e) =>
+                      handleChangePasswordField("currentPassword", e.target.value)
+                    }
+                    placeholder="••••••••"
+                    className="w-full rounded-lg border border-slate-700 bg-slate-800 py-3 pl-11 pr-11 text-white placeholder-slate-500 transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                  >
+                    {showCurrentPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-400">
+                  Parolă nouă
+                </label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    value={changePasswordForm.newPassword}
+                    onChange={(e) =>
+                      handleChangePasswordField("newPassword", e.target.value)
+                    }
+                    placeholder="••••••••"
+                    className="w-full rounded-lg border border-slate-700 bg-slate-800 py-3 pl-11 pr-11 text-white placeholder-slate-500 transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                  >
+                    {showNewPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-slate-500">
+                  Minim 8 caractere, o literă mare și un număr
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-400">
+                  Confirmă parola nouă
+                </label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={changePasswordForm.confirmPassword}
+                    onChange={(e) =>
+                      handleChangePasswordField("confirmPassword", e.target.value)
+                    }
+                    placeholder="••••••••"
+                    className="w-full rounded-lg border border-slate-700 bg-slate-800 py-3 pl-11 pr-11 text-white placeholder-slate-500 transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeChangePasswordModal}
+              >
+                <X className="mr-2 h-4 w-4" />
+                Anulează
+              </Button>
+
+              <Button
+                type="button"
+                onClick={handleChangePasswordSubmit}
+                disabled={changePasswordLoading}
+                className="gap-2"
+              >
+                <Check className="h-4 w-4" />
+                {changePasswordLoading ? "Se salvează..." : "Salvează parola"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteAccountModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="relative w-full max-w-2xl rounded-2xl border border-red-500/20 bg-slate-950/95 p-6 shadow-2xl backdrop-blur-xl">
+            <button
+              type="button"
+              onClick={closeDeleteAccountModal}
+              className="absolute right-4 top-4 rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="mb-6 flex items-start gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-500/10 ring-1 ring-red-500/20">
+                <AlertTriangle className="h-6 w-6 text-red-400" />
+              </div>
+
+              <div>
+                <h3 className="text-2xl font-bold text-white">
+                  Șterge contul definitiv
+                </h3>
+                <p className="mt-1 text-sm text-slate-400">
+                  Această acțiune este permanentă și nu poate fi anulată.
+                </p>
+              </div>
+            </div>
+
+            {deleteAccountError && (
+              <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                {deleteAccountError}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-slate-300">
+                <p className="mb-2 font-medium text-red-300">
+                  Ce se va întâmpla:
+                </p>
+                <ul className="space-y-1 text-slate-300">
+                  <li>• profilul tău va fi șters</li>
+                  <li>• adresele salvate vor fi eliminate</li>
+                  <li>• build-urile și wishlist-urile tale vor fi eliminate</li>
+                  <li>• nu vei mai putea accesa contul</li>
+                </ul>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-400">
+                  Scrie <span className="font-bold text-red-400">STERGE</span> pentru confirmare
+                </label>
+                <input
+                  type="text"
+                  value={deleteAccountForm.confirmationText}
+                  onChange={(e) =>
+                    handleDeleteAccountField("confirmationText", e.target.value)
+                  }
+                  placeholder="STERGE"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white placeholder-slate-500 transition focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-400">
+                  Parola curentă
+                  <span className="ml-1 text-xs text-slate-500">
+                    (obligatorie pentru conturile cu parolă locală)
+                  </span>
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type={showDeletePassword ? "text" : "password"}
+                    value={deleteAccountForm.currentPassword}
+                    onChange={(e) =>
+                      handleDeleteAccountField("currentPassword", e.target.value)
+                    }
+                    placeholder="••••••••"
+                    className="w-full rounded-lg border border-slate-700 bg-slate-800 py-3 pl-11 pr-11 text-white placeholder-slate-500 transition focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowDeletePassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                  >
+                    {showDeletePassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeDeleteAccountModal}
+              >
+                <X className="mr-2 h-4 w-4" />
+                Anulează
+              </Button>
+
+              <Button
+                type="button"
+                variant="danger"
+                onClick={handleDeleteAccountSubmit}
+                disabled={deleteAccountLoading}
+                className="gap-2"
+              >
+                <AlertTriangle className="h-4 w-4" />
+                {deleteAccountLoading ? "Se șterge..." : "Șterge definitiv"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

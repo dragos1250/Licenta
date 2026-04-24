@@ -1,3 +1,5 @@
+import { Mailer } from "../../lib/mailer.js";
+
 function normalizeJsonArray(value) {
   if (Array.isArray(value)) {
     return value.map((x) => String(x));
@@ -26,8 +28,20 @@ function round1(value) {
 }
 
 export class ProductsService {
-  constructor(productsRepository) {
+  constructor(productsRepository, options = {}) {
     this.productsRepository = productsRepository;
+    this.mailer = options.mailer || new Mailer();
+  }
+
+  async sendEmailSafe(methodName, payload) {
+    try {
+      if (!payload?.to) return;
+      if (!this.mailer?.[methodName]) return;
+
+      await this.mailer[methodName](payload);
+    } catch (error) {
+      console.error(`Eroare la trimiterea emailului ${methodName}:`, error);
+    }
   }
 
   async list(query) {
@@ -76,6 +90,7 @@ export class ProductsService {
 
   async categories() {
     const rows = await this.productsRepository.getCategories();
+
     return rows.map((r) => ({
       category: r.category,
       count: r._count.category,
@@ -175,7 +190,7 @@ export class ProductsService {
       throw new Error("Produsul nu există.");
     }
 
-    const existing = await this.productsRepository.findPublishedReviewByUser(
+    const existing = await this.productsRepository.findExistingReviewByUser(
       productId,
       userId
     );
@@ -188,7 +203,7 @@ export class ProductsService {
     const authorName =
       author?.name?.trim() || email || author?.email || "Utilizator";
 
-    return this.productsRepository.createReviewAndRefreshStats({
+    const review = await this.productsRepository.createReview({
       productId,
       userId,
       authorName,
@@ -196,6 +211,15 @@ export class ProductsService {
       content,
       rating,
     });
+
+    await this.sendEmailSafe("sendReviewSubmittedForModerationEmail", {
+      to: author?.email || email,
+      name: authorName,
+      product,
+      review,
+    });
+
+    return review;
   }
 
   async addQuestion(productId, { userId, email, question }) {
@@ -209,11 +233,51 @@ export class ProductsService {
     const authorName =
       author?.name?.trim() || email || author?.email || "Utilizator";
 
-    return this.productsRepository.createQuestion({
+    const createdQuestion = await this.productsRepository.createQuestion({
       productId,
       userId,
       authorName,
       question,
     });
+
+    await this.sendEmailSafe("sendQuestionSubmittedForModerationEmail", {
+      to: author?.email || email,
+      name: authorName,
+      product,
+      question: createdQuestion,
+    });
+
+    return createdQuestion;
+  }
+
+  async addAnswer(questionId, { userId, email, answer }) {
+    const question = await this.productsRepository.findApprovedQuestionById(
+      questionId
+    );
+
+    if (!question) {
+      throw new Error("Întrebarea nu există sau nu este publică.");
+    }
+
+    const author = await this.productsRepository.findUserIdentityById(userId);
+    const authorName =
+      author?.name?.trim() || email || author?.email || "Utilizator";
+
+    const createdAnswer = await this.productsRepository.createAnswer({
+      questionId,
+      userId,
+      authorName,
+      answer,
+    });
+
+    await this.sendEmailSafe("sendAnswerSubmittedForModerationEmail", {
+      to: author?.email || email,
+      name: authorName,
+      product: question.product,
+      question,
+      answer: createdAnswer,
+    });
+
+    return createdAnswer;
   }
 }

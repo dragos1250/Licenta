@@ -194,15 +194,28 @@ function normalizeGuestItems(items, byId) {
 // -------------------- service --------------------
 
 export class OrdersService {
-  constructor(ordersRepo, prisma) {
+  constructor(ordersRepo, prisma, options = {}) {
     this.ordersRepo = ordersRepo;
     this.prisma = prisma;
+    this.mailer = options.mailer || null;
+  }
+
+  async sendOrderConfirmationEmailSafe(order) {
+    try {
+      if (!this.mailer?.sendOrderConfirmationEmail) return;
+      if (!order?.customerEmail) return;
+
+      await this.mailer.sendOrderConfirmationEmail({
+        to: order.customerEmail,
+        order,
+      });
+    } catch (error) {
+      console.error("Eroare la trimiterea emailului de comandă:", error);
+    }
   }
 
   // =========================================================
   // PREPARE METHODS
-  // Acestea sunt pentru flow-ul Stripe:
-  // validează + calculează totalul, DAR NU creează comanda.
   // =========================================================
 
   async prepareUserCartCheckout(userId, body) {
@@ -290,8 +303,6 @@ export class OrdersService {
 
   // =========================================================
   // FINALIZE METHODS
-  // Acestea creează comanda efectiv și fac side effects.
-  // Pentru CARD trebuie apelate DOAR după plata reușită.
   // =========================================================
 
   async checkoutFromUserCart(userId, body) {
@@ -331,6 +342,8 @@ export class OrdersService {
       return created;
     });
 
+    await this.sendOrderConfirmationEmailSafe(order);
+
     return order;
   }
 
@@ -368,6 +381,8 @@ export class OrdersService {
 
       return created;
     });
+
+    await this.sendOrderConfirmationEmailSafe(order);
 
     return order;
   }

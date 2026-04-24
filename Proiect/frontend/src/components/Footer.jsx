@@ -288,7 +288,7 @@ function Footer() {
                 className="flex items-center gap-2 text-sm text-slate-400 transition-colors hover:text-cyan-400"
               >
                 <Mail className="h-4 w-4" />
-                contact@configexp.ro
+                configexp.app@gmail.com
               </a>
               <a
                 href="tel:+40123456789"

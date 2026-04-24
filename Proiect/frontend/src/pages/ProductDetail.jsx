@@ -28,6 +28,7 @@ const VAT_RATE = 0.21;
 
 const toNumber = (value) => Number(value ?? 0);
 const grossFromNet = (net) => toNumber(net) * (1 + VAT_RATE);
+
 const formatRon = (n) =>
   toNumber(n).toLocaleString("ro-RO", {
     minimumFractionDigits: 2,
@@ -53,9 +54,11 @@ function loadGuestWishlistIds() {
     const raw = localStorage.getItem(GUEST_WISHLIST_KEY);
     const arr = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(arr)) return new Set();
+
     const ids = arr
       .map((x) => (typeof x === "string" ? x : x?.productId))
       .filter(Boolean);
+
     return new Set(ids);
   } catch {
     return new Set();
@@ -114,6 +117,7 @@ function addToGuestCart(product, quantity = 1) {
         ? { ...x, quantity: (x.quantity || 1) + quantity }
         : x
     );
+
     saveGuestCart(next);
     return;
   }
@@ -203,6 +207,25 @@ function normalizeDate(dateValue) {
   });
 }
 
+
+function hasAdminRole(source) {
+  const directRoles = Array.isArray(source?.roles) ? source.roles : [];
+  if (directRoles.some((role) => String(role).trim().toLowerCase() === "admin")) {
+    return true;
+  }
+
+  const roles = Array.isArray(source?.userRoles) ? source.userRoles : [];
+  return roles.some((userRole) => {
+    const roleName =
+      userRole?.role?.name ||
+      userRole?.name ||
+      userRole?.roleName ||
+      "";
+
+    return String(roleName).trim().toLowerCase() === "admin";
+  });
+}
+
 function getRatingDistribution(reviewsList) {
   const total = reviewsList.length;
 
@@ -218,6 +241,7 @@ function getRatingDistribution(reviewsList) {
 
   return [5, 4, 3, 2, 1].map((stars) => {
     const count = reviewsList.filter((r) => Number(r.rating) === stars).length;
+
     return {
       stars,
       percent: Math.round((count / total) * 100),
@@ -228,7 +252,7 @@ function getRatingDistribution(reviewsList) {
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated, isAuthLoading } = useAuth();
+  const { user, isAuthenticated, isAuthLoading } = useAuth();
 
   const [activeTab, setActiveTab] = useState("description");
   const [selectedImage, setSelectedImage] = useState(0);
@@ -259,6 +283,15 @@ export default function ProductDetail() {
   });
   const [questionError, setQuestionError] = useState("");
   const [questionSubmitting, setQuestionSubmitting] = useState(false);
+
+  const [showAnswerModal, setShowAnswerModal] = useState(false);
+  const [selectedQuestion, setSelectedQuestion] = useState(null);
+  const [answerForm, setAnswerForm] = useState({
+    answer: "",
+  });
+  const [answerError, setAnswerError] = useState("");
+  const [answerSubmitting, setAnswerSubmitting] = useState(false);
+
 
   const fetchProduct = async () => {
     if (!id) return;
@@ -333,6 +366,7 @@ export default function ProductDetail() {
 
     if (mapped.length > 0) {
       const seen = new Set();
+
       return mapped.filter((img) => {
         const key = img.raw;
         if (seen.has(key)) return false;
@@ -473,12 +507,15 @@ export default function ProductDetail() {
     const entry = specificationEntries.find(([key]) =>
       /garan/i.test(String(key || ""))
     );
+
     return entry ? String(entry[1] ?? "") : null;
   }, [specificationEntries]);
 
+  const isAdmin = useMemo(() => hasAdminRole(user), [user]);
+
   const showToast = (message) => {
     setToast(message);
-    setTimeout(() => setToast(""), 2200);
+    setTimeout(() => setToast(""), 3000);
   };
 
   const ensureAuthenticated = () => {
@@ -486,6 +523,7 @@ export default function ProductDetail() {
       navigate("/login");
       return false;
     }
+
     return true;
   };
 
@@ -511,6 +549,18 @@ export default function ProductDetail() {
     setShowQuestionModal(true);
   };
 
+  const openAnswerModal = (question) => {
+    if (!ensureAuthenticated()) return;
+
+    setSelectedQuestion(question || null);
+    setAnswerError("");
+    setAnswerForm({
+      answer: "",
+    });
+    setShowAnswerModal(true);
+  };
+
+
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
     setReviewError("");
@@ -520,50 +570,54 @@ export default function ProductDetail() {
     const rating = Number(reviewForm.rating);
 
     if (!content) {
-        setReviewError("Scrie conținutul review-ului.");
-        return;
+      setReviewError("Scrie conținutul review-ului.");
+      return;
     }
 
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-        setReviewError("Rating-ul trebuie să fie între 1 și 5.");
-        return;
+      setReviewError("Rating-ul trebuie să fie între 1 și 5.");
+      return;
     }
 
     setReviewSubmitting(true);
 
     try {
-        const payload = {
+      const payload = {
         rating,
         content,
-        };
+      };
 
-        // trimite titlul doar dacă există efectiv
-        if (title) {
+      if (title) {
         payload.title = title;
-        }
+      }
 
-        await api.post(`/products/${id}/reviews`, payload);
+      const res = await api.post(`/products/${id}/reviews`, payload);
 
-        setShowReviewModal(false);
-        await fetchProduct();
-        setActiveTab("reviews");
-        showToast("Review adăugat cu succes ✅");
+      setShowReviewModal(false);
+      await fetchProduct();
+      setActiveTab("reviews");
+      showToast(
+        res.data?.message ||
+          "Review-ul a fost trimis și așteaptă aprobarea unui administrator ✅"
+      );
     } catch (e2) {
-        setReviewError(
+      setReviewError(
         e2?.response?.data?.error ||
-            e2?.response?.data?.message ||
-            "Nu am putut trimite review-ul."
-        );
+          e2?.response?.data?.message ||
+          "Nu am putut trimite review-ul."
+      );
     } finally {
-        setReviewSubmitting(false);
+      setReviewSubmitting(false);
     }
-};
+  };
 
   const handleQuestionSubmit = async (e) => {
     e.preventDefault();
     setQuestionError("");
 
-    if (!questionForm.question.trim()) {
+    const question = questionForm.question.trim();
+
+    if (!question) {
       setQuestionError("Scrie întrebarea.");
       return;
     }
@@ -571,20 +625,77 @@ export default function ProductDetail() {
     setQuestionSubmitting(true);
 
     try {
-      await api.post(`/products/${id}/questions`, {
-        question: questionForm.question.trim(),
+      const res = await api.post(`/products/${id}/questions`, {
+        question,
       });
 
       setShowQuestionModal(false);
       await fetchProduct();
       setActiveTab("qa");
-      showToast("Întrebarea a fost trimisă ✅");
+      showToast(
+        res.data?.message ||
+          "Întrebarea a fost trimisă și așteaptă aprobarea unui administrator ✅"
+      );
     } catch (e2) {
       setQuestionError(
         e2?.response?.data?.error || "Nu am putut trimite întrebarea."
       );
     } finally {
       setQuestionSubmitting(false);
+    }
+  };
+
+
+  const handleAnswerSubmit = async (e) => {
+    e.preventDefault();
+    setAnswerError("");
+
+    const answer = answerForm.answer.trim();
+
+    if (!selectedQuestion?.id) {
+      setAnswerError("Întrebarea selectată nu este validă.");
+      return;
+    }
+
+    if (answer.length < 10) {
+      setAnswerError("Răspunsul trebuie să aibă minim 10 caractere.");
+      return;
+    }
+
+    setAnswerSubmitting(true);
+
+    try {
+      const endpoint = isAdmin
+        ? `/admin/questions/${selectedQuestion.id}/answers`
+        : `/products/questions/${selectedQuestion.id}/answers`;
+
+      const res = await api.post(endpoint, {
+        answer,
+      });
+
+      setShowAnswerModal(false);
+      setSelectedQuestion(null);
+      setAnswerForm({
+        answer: "",
+      });
+
+      await fetchProduct();
+      setActiveTab("qa");
+
+      showToast(
+        res.data?.message ||
+          (isAdmin
+            ? "Răspunsul oficial a fost publicat ✅"
+            : "Răspunsul a fost trimis și așteaptă aprobarea unui administrator ✅")
+      );
+    } catch (e2) {
+      setAnswerError(
+        e2?.response?.data?.error ||
+          e2?.response?.data?.message ||
+          "Nu am putut trimite răspunsul."
+      );
+    } finally {
+      setAnswerSubmitting(false);
     }
   };
 
@@ -630,6 +741,7 @@ export default function ProductDetail() {
     }
 
     setWishlistBusy(true);
+
     try {
       if (wasIn) {
         await api.delete(`/wishlist/items/${product.id}`);
@@ -1283,6 +1395,17 @@ export default function ProductDetail() {
                         <h3 className="font-semibold text-white">{q.question}</h3>
                       </div>
 
+                      <div className="mb-4 flex justify-end">
+                        <Button
+                          type="button"
+                          onClick={() => openAnswerModal(q)}
+                          className="gap-2 border border-slate-600 bg-transparent text-slate-300 hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400"
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                          Răspunde
+                        </Button>
+                      </div>
+
                       {Array.isArray(q.answers) && q.answers.length > 0 ? (
                         <div className="space-y-3 border-t border-slate-700/50 pt-4">
                           {q.answers.map((answer, answerIdx) => (
@@ -1338,7 +1461,12 @@ export default function ProductDetail() {
 
             <div className="absolute left-1/2 top-1/2 w-[95vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-700/60 bg-slate-950/95 p-6 shadow-2xl backdrop-blur-xl">
               <div className="mb-6 flex items-center justify-between">
-                <h3 className="text-xl font-bold text-white">Scrie un review</h3>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Scrie un review</h3>
+                  <p className="mt-1 text-sm text-slate-400">
+                    Review-ul va deveni public după aprobarea unui administrator.
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowReviewModal(false)}
@@ -1442,7 +1570,12 @@ export default function ProductDetail() {
 
             <div className="absolute left-1/2 top-1/2 w-[95vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-700/60 bg-slate-950/95 p-6 shadow-2xl backdrop-blur-xl">
               <div className="mb-6 flex items-center justify-between">
-                <h3 className="text-xl font-bold text-white">Pune o întrebare</h3>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Pune o întrebare</h3>
+                  <p className="mt-1 text-sm text-slate-400">
+                    Întrebarea va deveni publică după aprobarea unui administrator.
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowQuestionModal(false)}
@@ -1489,6 +1622,103 @@ export default function ProductDetail() {
                     className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30"
                   >
                     {questionSubmitting ? "Se trimite..." : "Trimite întrebarea"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {showAnswerModal && selectedQuestion && (
+          <div className="fixed inset-0 z-[100]">
+            <div
+              className="absolute inset-0 bg-black/70"
+              onClick={() => {
+                setShowAnswerModal(false);
+                setSelectedQuestion(null);
+              }}
+            />
+
+            <div className="absolute left-1/2 top-1/2 w-[95vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-700/60 bg-slate-950/95 p-6 shadow-2xl backdrop-blur-xl">
+              <div className="mb-6 flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-bold text-white">
+                    Răspunde la întrebare
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-400">
+                    {isAdmin
+                      ? "Răspunsul tău va fi publicat imediat ca răspuns oficial."
+                      : "Răspunsul tău va deveni public după aprobarea unui administrator."}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAnswerModal(false);
+                    setSelectedQuestion(null);
+                  }}
+                  className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="mb-4 rounded-xl border border-slate-700/50 bg-slate-900/60 p-4">
+                <div className="mb-1 text-xs uppercase tracking-wide text-slate-500">
+                  Întrebare
+                </div>
+                <p className="text-sm text-slate-200">
+                  {selectedQuestion.question}
+                </p>
+              </div>
+
+              {answerError && (
+                <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                  {answerError}
+                </div>
+              )}
+
+              <form onSubmit={handleAnswerSubmit} className="space-y-5">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-300">
+                    Răspunsul tău *
+                  </label>
+                  <textarea
+                    rows={6}
+                    value={answerForm.answer}
+                    onChange={(e) =>
+                      setAnswerForm({
+                        answer: e.target.value,
+                      })
+                    }
+                    placeholder="Scrie răspunsul aici..."
+                    className="w-full rounded-xl border border-slate-700/80 bg-slate-800/90 px-4 py-3 text-sm text-white placeholder:text-slate-400 outline-none transition-all focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/10"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setShowAnswerModal(false);
+                      setSelectedQuestion(null);
+                    }}
+                    className="border border-slate-600 bg-transparent text-slate-300 hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400"
+                  >
+                    Anulează
+                  </Button>
+
+                  <Button
+                    type="submit"
+                    disabled={answerSubmitting}
+                    className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30"
+                  >
+                    {answerSubmitting
+                      ? "Se trimite..."
+                      : isAdmin
+                      ? "Publică răspuns oficial"
+                      : "Trimite răspuns"}
                   </Button>
                 </div>
               </form>

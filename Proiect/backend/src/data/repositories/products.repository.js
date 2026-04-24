@@ -29,7 +29,10 @@ export class ProductsRepository {
       orderBy,
       include: {
         reviewItems: {
-          where: { isPublished: true },
+          where: {
+            isPublished: true,
+            moderationStatus: "APPROVED",
+          },
           select: {
             rating: true,
           },
@@ -58,6 +61,8 @@ export class ProductsRepository {
       select: {
         id: true,
         name: true,
+        brand: true,
+        imageUrl: true,
       },
     });
   }
@@ -73,15 +78,54 @@ export class ProductsRepository {
     });
   }
 
-  findPublishedReviewByUser(productId, userId) {
+  findExistingReviewByUser(productId, userId) {
     return this.prisma.productReview.findFirst({
       where: {
         productId,
         userId,
-        isPublished: true,
+        moderationStatus: {
+          in: ["PENDING", "APPROVED"],
+        },
       },
       select: {
         id: true,
+        moderationStatus: true,
+      },
+    });
+  }
+
+  findApprovedQuestionById(questionId) {
+    return this.prisma.productQuestion.findFirst({
+      where: {
+        id: questionId,
+        isPublished: true,
+        moderationStatus: "APPROVED",
+        product: {
+          isActive: true,
+        },
+      },
+      select: {
+        id: true,
+        productId: true,
+        question: true,
+        authorName: true,
+        userId: true,
+        product: {
+          select: {
+            id: true,
+            name: true,
+            brand: true,
+            imageUrl: true,
+            isActive: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
       },
     });
   }
@@ -97,15 +141,24 @@ export class ProductsRepository {
           orderBy: { sortOrder: "asc" },
         },
         reviewItems: {
-          where: { isPublished: true },
+          where: {
+            isPublished: true,
+            moderationStatus: "APPROVED",
+          },
           orderBy: { createdAt: "desc" },
         },
         questions: {
-          where: { isPublished: true },
+          where: {
+            isPublished: true,
+            moderationStatus: "APPROVED",
+          },
           orderBy: { createdAt: "desc" },
           include: {
             answers: {
-              where: { isPublished: true },
+              where: {
+                isPublished: true,
+                moderationStatus: "APPROVED",
+              },
               orderBy: [{ isOfficial: "desc" }, { createdAt: "asc" }],
             },
           },
@@ -114,7 +167,7 @@ export class ProductsRepository {
     });
   }
 
-  async createReviewAndRefreshStats({
+  createReview({
     productId,
     userId,
     authorName,
@@ -122,42 +175,18 @@ export class ProductsRepository {
     content,
     rating,
   }) {
-    return this.prisma.$transaction(async (tx) => {
-      const review = await tx.productReview.create({
-        data: {
-          productId,
-          userId,
-          authorName,
-          title,
-          content,
-          rating,
-          verifiedPurchase: false,
-          isPublished: true,
-        },
-      });
-
-      const stats = await tx.productReview.aggregate({
-        where: {
-          productId,
-          isPublished: true,
-        },
-        _avg: {
-          rating: true,
-        },
-        _count: {
-          id: true,
-        },
-      });
-
-      await tx.product.update({
-        where: { id: productId },
-        data: {
-          rating: Number(stats._avg.rating || 0),
-          reviews: Number(stats._count.id || 0),
-        },
-      });
-
-      return review;
+    return this.prisma.productReview.create({
+      data: {
+        productId,
+        userId,
+        authorName,
+        title,
+        content,
+        rating,
+        verifiedPurchase: false,
+        isPublished: false,
+        moderationStatus: "PENDING",
+      },
     });
   }
 
@@ -168,7 +197,22 @@ export class ProductsRepository {
         userId,
         authorName,
         question,
-        isPublished: true,
+        isPublished: false,
+        moderationStatus: "PENDING",
+      },
+    });
+  }
+
+  createAnswer({ questionId, userId, authorName, answer }) {
+    return this.prisma.productAnswer.create({
+      data: {
+        questionId,
+        userId,
+        authorName,
+        answer,
+        isOfficial: false,
+        isPublished: false,
+        moderationStatus: "PENDING",
       },
     });
   }

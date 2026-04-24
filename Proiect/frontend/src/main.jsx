@@ -20,6 +20,9 @@ import Checkout from "./pages/Checkout.jsx";
 import InfoPage from "./pages/InfoPage.jsx";
 import ProductDetail from "./pages/ProductDetail.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
+import VerifyEmail from "./pages/VerifyEmail";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
+import ResetPasswordPage from "./pages/ResetPassword.jsx";
 
 function PlaceholderPage({ title }) {
   return (
@@ -55,15 +58,15 @@ const router = createBrowserRouter([
       { path: "info", element: <InfoPage /> },
       { path: "products/:id", element: <ProductDetail /> },
       { path: "admin", element: (<ProtectedRoute><AdminDashboard /></ProtectedRoute>),},
-
+      { path: "verify-email", element: <VerifyEmail /> },
+      { path: "forgot-password", element: <ForgotPasswordPage /> },
+      { path: "reset-password", element: <ResetPasswordPage /> },
     ],
   },
 ]);
 
 createRoot(document.getElementById("root")).render(
-  <StrictMode>
-    <AuthProvider>
-      <RouterProvider router={router} />
-    </AuthProvider>
-  </StrictMode>
+  <AuthProvider>
+    <RouterProvider router={router} />
+  </AuthProvider>
 );

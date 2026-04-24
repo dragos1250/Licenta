@@ -4,12 +4,14 @@ import { OrdersRepository } from "../../data/repositories/orders.repository.js";
 import { OrdersService } from "../../business/services/orders.service.js";
 import { OrdersController } from "../controllers/orders.controller.js";
 import { requireAuth } from "../middlewares/auth.middleware.js";
+import { Mailer } from "../../lib/mailer.js";
 
 export function ordersRoutes() {
   const router = Router();
 
   const repo = new OrdersRepository(prisma);
-  const service = new OrdersService(repo, prisma);
+  const mailer = new Mailer();
+  const service = new OrdersService(repo, prisma, { mailer });
   const controller = new OrdersController(service);
 
   // user (din cart DB)

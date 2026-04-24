@@ -25,9 +25,27 @@ export class AuthRepository {
     });
   }
 
-  async registerUserWithDefaultRole({ name, email, passwordHash }) {
+  findUserByGoogleId(googleId) {
+    return this.prisma.user.findUnique({
+      where: { googleId },
+      include: {
+        userRoles: {
+          include: { role: true },
+        },
+      },
+    });
+  }
+
+  async registerUserWithDefaultRole({
+    name,
+    email,
+    passwordHash = null,
+    googleId = null,
+    avatarUrl = null,
+    emailVerified = false,
+    emailVerifiedAt = null,
+  }) {
     return this.prisma.$transaction(async (tx) => {
-      // creează rolul "User" dacă nu există
       const userRole = await tx.role.upsert({
         where: { name: "User" },
         update: {},
@@ -37,16 +55,18 @@ export class AuthRepository {
         },
       });
 
-      // creează utilizatorul
       const user = await tx.user.create({
         data: {
           name,
           email,
           passwordHash,
+          googleId,
+          avatarUrl,
+          emailVerified,
+          emailVerifiedAt,
         },
       });
 
-      // leagă user-ul de rol
       await tx.userRole.create({
         data: {
           userId: user.id,
@@ -54,7 +74,6 @@ export class AuthRepository {
         },
       });
 
-      // return user complet (cu roluri)
       const createdUser = await tx.user.findUnique({
         where: { id: user.id },
         include: {
@@ -65,6 +84,131 @@ export class AuthRepository {
       });
 
       return createdUser;
+    });
+  }
+
+  async linkGoogleAccount(userId, { googleId, avatarUrl = null }) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        googleId,
+        ...(avatarUrl ? { avatarUrl } : {}),
+      },
+      include: {
+        userRoles: {
+          include: { role: true },
+        },
+      },
+    });
+  }
+
+  createEmailVerificationToken({ userId, tokenHash, expiresAt }) {
+    return this.prisma.emailVerificationToken.create({
+      data: {
+        userId,
+        tokenHash,
+        expiresAt,
+      },
+    });
+  }
+
+  findValidEmailVerificationToken(tokenHash) {
+    return this.prisma.emailVerificationToken.findFirst({
+      where: {
+        tokenHash,
+        usedAt: null,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      include: {
+        user: {
+          include: {
+            userRoles: {
+              include: { role: true },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  markEmailVerificationTokenAsUsed(id) {
+    return this.prisma.emailVerificationToken.update({
+      where: { id },
+      data: {
+        usedAt: new Date(),
+      },
+    });
+  }
+
+  markUserAsEmailVerified(userId) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
+      },
+      include: {
+        userRoles: {
+          include: { role: true },
+        },
+      },
+    });
+  }
+
+  createPasswordResetToken({ userId, tokenHash, expiresAt }) {
+    return this.prisma.passwordResetToken.create({
+      data: {
+        userId,
+        tokenHash,
+        expiresAt,
+      },
+    });
+  }
+
+  findValidPasswordResetToken(tokenHash) {
+    return this.prisma.passwordResetToken.findFirst({
+      where: {
+        tokenHash,
+        usedAt: null,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      include: {
+        user: {
+          include: {
+            userRoles: {
+              include: { role: true },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  markPasswordResetTokenAsUsed(id) {
+    return this.prisma.passwordResetToken.update({
+      where: { id },
+      data: {
+        usedAt: new Date(),
+      },
+    });
+  }
+
+  updateUserPassword(userId, passwordHash) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash,
+      },
+    });
+  }
+
+  deleteUserById(userId) {
+    return this.prisma.user.delete({
+      where: { id: userId },
     });
   }
 }

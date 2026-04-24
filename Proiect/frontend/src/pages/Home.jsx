@@ -243,7 +243,7 @@ return (
             </h2>
             <div className="grid gap-6 md:grid-cols-3">
               <Link
-                to="/components/cpu"
+                 to="/components/Procesoare"
                 className="group relative overflow-hidden rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm transition-all hover:border-cyan-500/50 hover:bg-slate-800/50"
               >
                 <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-cyan-500/10 transition-all group-hover:scale-110 group-hover:bg-cyan-500/20">
@@ -256,7 +256,7 @@ return (
               </Link>
 
               <Link
-                to="/components/gpu"
+                to={`/components/${encodeURIComponent("Plăci video")}`}
                 className="group relative overflow-hidden rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm transition-all hover:border-cyan-500/50 hover:bg-slate-800/50"
               >
                 <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-cyan-500/10 transition-all group-hover:scale-110 group-hover:bg-cyan-500/20">
@@ -269,7 +269,7 @@ return (
               </Link>
 
               <Link
-                to="/components/storage"
+                to="/components/Stocare"
                 className="group relative overflow-hidden rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm transition-all hover:border-cyan-500/50 hover:bg-slate-800/50"
               >
                 <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-cyan-500/10 transition-all group-hover:scale-110 group-hover:bg-cyan-500/20">

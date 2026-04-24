@@ -14,8 +14,10 @@ export function productsRoutes() {
 
   router.get("/", controller.list);
   router.get("/categories", controller.categories);
-  router.get("/:id", controller.detail);
 
+  router.post("/questions/:questionId/answers", requireAuth, controller.addAnswer);
+
+  router.get("/:id", controller.detail);
   router.post("/:id/reviews", requireAuth, controller.addReview);
   router.post("/:id/questions", requireAuth, controller.addQuestion);
 
