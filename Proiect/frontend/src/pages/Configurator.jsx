@@ -180,8 +180,6 @@ export default function Configurator() {
     [totalNetPrice, tva]
   );
 
-  const isCompatible = compatibility.isCompatible;
-
   useEffect(() => {
     const hasSelected = Object.values(selectedMap).some(Boolean);
 
@@ -248,14 +246,34 @@ export default function Configurator() {
     setPickerLoading(true);
 
     try {
-      const res = await api.post(`/configurator/options/${slotId}`, {
-        selected: selectedMap,
-      });
+      // Afișăm toate produsele din categoria slotului, nu doar cele filtrate agresiv
+      // de compatibilitate. Compatibilitatea rămâne verificată imediat după selecție
+      // în panoul din dreapta.
+      const category = SLOT_CATEGORY[slotId];
+      const res = await api.get("/products");
+      const allProducts = Array.isArray(res.data) ? res.data : [];
 
-      setPickerProducts(res.data || []);
+      const productsForSlot = allProducts
+        .filter(
+          (product) =>
+            product?.category === category &&
+            product?.isActive !== false
+        )
+        .sort((a, b) => {
+          const stockA = Number(a.stock || 0) > 0 ? 1 : 0;
+          const stockB = Number(b.stock || 0) > 0 ? 1 : 0;
+
+          if (stockA !== stockB) return stockB - stockA;
+
+          return Number(b.priceRon || 0) - Number(a.priceRon || 0);
+        });
+
+      setPickerProducts(productsForSlot);
     } catch (e) {
       setPickerError(
-        e?.response?.data?.message || "Nu am putut încărca produsele."
+        e?.response?.data?.message ||
+          e?.response?.data?.error ||
+          "Nu am putut încărca produsele."
       );
       setPickerProducts([]);
     } finally {
@@ -279,6 +297,13 @@ export default function Configurator() {
     );
 
     closePicker();
+  };
+
+  const openProductDetail = (productId) => {
+    if (!productId) return;
+
+    closePicker();
+    navigate(`/products/${productId}`);
   };
 
   const clearSlot = (slotId) => {
@@ -385,23 +410,23 @@ export default function Configurator() {
   };
 
   return (
-    <div className="min-h-screen px-6 py-12">
+    <div className="min-h-screen px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-7xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-12 text-center"
+          className="mb-10 text-center sm:mb-12"
         >
-          <h1 className="mb-4 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-5xl font-bold text-transparent">
+          <h1 className="mx-auto mb-2 max-w-[620px] bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text pb-2 text-4xl font-bold leading-[1.12] text-transparent sm:text-5xl">
             Configurator PC
           </h1>
-          <p className="text-lg text-slate-400">
-            Construiește pas cu pas sistemul tău perfect
+          <p className="mx-auto max-w-xl text-base leading-relaxed text-slate-400 sm:text-lg">
+            Construiește-ți pas cu pas sistemul tău de vis
           </p>
         </motion.div>
 
         <div className="grid gap-8 lg:grid-cols-3">
-          <div className="lg:col-span-2">
+          <div className="min-w-0 lg:col-span-2">
             <div className="space-y-4">
               {slots.map((slot, index) => {
                 const Icon = slot.icon;
@@ -412,30 +437,33 @@ export default function Configurator() {
                     initial={{ opacity: 0, y: 18 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.06 }}
-                    className="group relative overflow-hidden rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm transition-all hover:border-cyan-500/50 hover:bg-slate-800/50"
+                    className="group relative overflow-hidden rounded-xl border border-slate-700/50 bg-slate-900/50 p-4 backdrop-blur-sm transition-all hover:border-cyan-500/50 hover:bg-slate-800/50 sm:p-6"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-cyan-500/10 transition-all group-hover:bg-cyan-500/20">
-                          <Icon className="h-6 w-6 text-cyan-400" />
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
+                        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 transition-all group-hover:bg-cyan-500/20 sm:h-12 sm:w-12">
+                          <Icon className="h-5 w-5 text-cyan-400 sm:h-6 sm:w-6" />
                         </div>
 
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-white">{slot.name}</h3>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                            <h3 className="text-sm font-semibold text-white sm:text-base">
+                              {slot.name}
+                            </h3>
+
                             {slot.required && (
-                              <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-xs font-semibold text-red-400">
+                              <span className="rounded-full border border-red-500/30 bg-red-500/10 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-red-400 sm:px-2 sm:text-xs">
                                 Obligatoriu
                               </span>
                             )}
                           </div>
 
                           {slot.selected ? (
-                            <div className="mt-1">
-                              <p className="text-sm font-medium text-cyan-400">
+                            <div className="mt-1 min-w-0">
+                              <p className="line-clamp-2 break-words text-sm font-medium leading-snug text-cyan-400">
                                 {slot.selected.name}
                               </p>
-                              <p className="text-xs text-slate-500">
+                              <p className="mt-0.5 truncate text-xs text-slate-500">
                                 {slot.selected.brand} • {slot.selected.category}
                               </p>
                             </div>
@@ -447,40 +475,45 @@ export default function Configurator() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
+                      <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
                         {slot.selected && (
-                          <>
-                            <div className="text-right">
-                              <div className="font-semibold text-cyan-400">
-                                {formatRon(grossFromNet(slot.selected.priceRon))} RON
-                              </div>
-                              <div className="text-xs text-slate-500">
-                                ({formatRon(slot.selected.priceRon)} fără TVA)
-                              </div>
+                          <div className="w-full rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-3 py-2 text-center sm:w-[150px] sm:min-w-[150px]">
+                            <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                              Preț cu TVA
                             </div>
+                            <div className="text-base font-bold leading-tight text-cyan-400">
+                              {formatRon(grossFromNet(slot.selected.priceRon))} RON
+                            </div>
+                            <div className="text-[11px] leading-snug text-slate-500">
+                              {formatRon(slot.selected.priceRon)} RON fără TVA
+                            </div>
+                          </div>
+                        )}
 
+                        <div className="flex w-full items-center justify-center gap-3 sm:w-auto sm:justify-end">
+                          {slot.selected && (
                             <button
                               type="button"
                               onClick={() => clearSlot(slot.id)}
-                              className="rounded-full bg-slate-800/70 p-2 text-slate-300 transition hover:bg-red-500/10 hover:text-red-300"
+                              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-800/70 text-slate-300 transition hover:bg-red-500/10 hover:text-red-300"
                               title="Elimină"
                             >
                               <X className="h-4 w-4" />
                             </button>
-                          </>
-                        )}
+                          )}
 
-                        <button
-                          type="button"
-                          onClick={() => openPicker(slot.id)}
-                          className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                            slot.selected
-                              ? "border border-slate-600 bg-slate-900/60 text-slate-300 hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400"
-                              : "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40"
-                          }`}
-                        >
-                          {slot.selected ? "Schimbă" : "Alege"}
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => openPicker(slot.id)}
+                            className={`min-h-10 w-[150px] max-w-full rounded-lg px-4 py-2 text-sm font-semibold transition sm:w-auto sm:min-w-[96px] ${
+                              slot.selected
+                                ? "border border-slate-600 bg-slate-900/60 text-slate-300 hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400"
+                                : "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40"
+                            }`}
+                          >
+                            {slot.selected ? "Schimbă" : "Alege"}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </motion.div>
@@ -489,9 +522,9 @@ export default function Configurator() {
             </div>
           </div>
 
-          <div className="lg:col-span-1">
-            <div className="sticky top-24 space-y-6">
-              <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm">
+          <div className="min-w-0 lg:col-span-1">
+            <div className="space-y-6 lg:sticky lg:top-24">
+              <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5 backdrop-blur-sm sm:p-6">
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="font-semibold text-white">Status configurare</h3>
                   <span className="text-sm font-bold text-cyan-400">{completionPct}%</span>
@@ -511,7 +544,7 @@ export default function Configurator() {
                 </p>
               </div>
 
-              <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm">
+              <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5 backdrop-blur-sm sm:p-6">
                 <div className="mb-3 flex items-center gap-2">
                   {compatibility.isCompatible ? (
                     <Check className="h-5 w-5 text-green-400" />
@@ -572,13 +605,13 @@ export default function Configurator() {
                 )}
 
                 <div className="mt-4 space-y-2 border-t border-slate-700 pt-4 text-sm">
-                  <div className="flex justify-between">
+                  <div className="flex justify-between gap-3">
                     <span className="text-slate-400">Consum estimat sistem</span>
                     <span className="font-medium text-slate-200">
                       {compatibility.estimatedSystemPowerW} W
                     </span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between gap-3">
                     <span className="text-slate-400">PSU recomandat minim</span>
                     <span className="font-medium text-cyan-400">
                       {compatibility.recommendedPsuW} W
@@ -587,11 +620,11 @@ export default function Configurator() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-cyan-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-6 shadow-lg shadow-cyan-500/10">
-                <div className="mb-4 flex items-center justify-between">
+              <div className="rounded-xl border border-cyan-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-5 shadow-lg shadow-cyan-500/10 sm:p-6">
+                <div className="mb-4 flex items-center justify-between gap-4">
                   <h3 className="font-semibold text-white">Preț total</h3>
                   <div className="text-right">
-                    <div className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-3xl font-bold text-transparent">
+                    <div className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-2xl font-bold text-transparent sm:text-3xl">
                       {formatRon(totalGrossPrice)}
                     </div>
                     <div className="text-sm text-slate-400">RON cu TVA</div>
@@ -599,15 +632,15 @@ export default function Configurator() {
                 </div>
 
                 <div className="mb-4 space-y-2 border-t border-slate-700 pt-4">
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between gap-3 text-sm">
                     <span className="text-slate-400">Total fără TVA</span>
-                    <span className="text-slate-300">{formatRon(totalNetPrice)} RON</span>
+                    <span className="text-right text-slate-300">{formatRon(totalNetPrice)} RON</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between gap-3 text-sm">
                     <span className="text-slate-400">TVA (21%)</span>
-                    <span className="text-slate-300">{formatRon(tva)} RON</span>
+                    <span className="text-right text-slate-300">{formatRon(tva)} RON</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between gap-3 text-sm">
                     <span className="text-slate-400">Transport</span>
                     <span className="font-medium text-green-400">GRATUIT</span>
                   </div>
@@ -674,12 +707,15 @@ export default function Configurator() {
           <div className="fixed inset-0 z-[100]">
             <div className="absolute inset-0 bg-black/60" onClick={closePicker} />
 
-            <div className="absolute left-1/2 top-1/2 w-[95vw] max-w-3xl -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-950/95 shadow-2xl backdrop-blur-xl">
-              <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
-                <div>
+            <div className="absolute left-1/2 top-1/2 w-[94vw] max-w-3xl -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-950/95 shadow-2xl backdrop-blur-xl">
+              <div className="flex items-center justify-between gap-4 border-b border-slate-800 px-4 py-4 sm:px-5">
+                <div className="min-w-0">
                   <div className="text-sm text-slate-400">Selectează componentă</div>
-                  <div className="text-lg font-semibold text-white">
+                  <div className="truncate text-lg font-semibold text-white">
                     {activeSlotId ? SLOT_CATEGORY[activeSlotId] : "Produse"}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    Sunt afișate toate produsele din categorie. Compatibilitatea se verifică după selecție.
                   </div>
                 </div>
 
@@ -692,14 +728,14 @@ export default function Configurator() {
                 </button>
               </div>
 
-              <div className="px-5 py-4">
+              <div className="px-4 py-4 sm:px-5">
                 <div className="mb-4 flex items-center gap-2 rounded-xl border border-slate-700/50 bg-slate-900/50 px-4 py-3">
-                  <Search className="h-5 w-5 text-slate-500" />
+                  <Search className="h-5 w-5 flex-shrink-0 text-slate-500" />
                   <input
                     value={pickerQuery}
                     onChange={(e) => setPickerQuery(e.target.value)}
                     placeholder="Caută după produs sau brand..."
-                    className="w-full bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
+                    className="w-full min-w-0 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
                   />
                 </div>
 
@@ -718,42 +754,64 @@ export default function Configurator() {
                     {filteredPickerProducts.map((p) => (
                       <div
                         key={p.id}
-                        className="flex items-center justify-between gap-4 rounded-xl border border-slate-800 bg-slate-900/50 p-4 transition hover:border-cyan-500/30 hover:bg-slate-800/50"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openProductDetail(p.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openProductDetail(p.id);
+                          }
+                        }}
+                        className="group flex cursor-pointer flex-col gap-4 rounded-xl border border-slate-800 bg-slate-900/50 p-4 transition hover:border-cyan-500/30 hover:bg-slate-800/50 sm:flex-row sm:items-center sm:justify-between"
+                        title="Deschide detaliile produsului"
                       >
-                        <div className="flex items-center gap-4">
-                          <div className="h-16 w-16 overflow-hidden rounded-lg bg-slate-800">
+                        <div className="flex min-w-0 items-center gap-4">
+                          <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-slate-800">
                             <ImageWithFallback
                               src={resolveProductImage(p.imageUrl)}
                               alt={p.name}
-                              className="h-full w-full object-cover"
+                              className="h-full w-full object-contain p-1 transition duration-300 group-hover:scale-105"
                             />
                           </div>
 
-                          <div>
+                          <div className="min-w-0">
                             <div className="text-xs font-medium text-cyan-400">{p.brand}</div>
-                            <div className="font-semibold text-white">{p.name}</div>
+                            <div className="line-clamp-2 break-words font-semibold text-white transition group-hover:text-cyan-300">
+                              {p.name}
+                            </div>
                             <div className="mt-1 text-xs text-slate-500">
                               Stoc:{" "}
                               <span className={p.stock > 0 ? "text-green-400" : "text-red-400"}>
                                 {p.stock}
                               </span>
                             </div>
+                            <div className="mt-1 text-[11px] text-slate-500">
+                              Click pe card pentru detalii
+                            </div>
                           </div>
                         </div>
 
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-cyan-400">
-                            {formatRon(grossFromNet(p.priceRon))}{" "}
-                            <span className="text-sm text-slate-400">RON</span>
-                          </div>
-                          <div className="text-xs text-slate-500">
-                            ({formatRon(p.priceRon)} fără TVA)
+                        <div className="flex flex-col gap-2 text-left sm:min-w-[150px] sm:text-right">
+                          <div>
+                            <div className="text-lg font-bold text-cyan-400">
+                              {formatRon(grossFromNet(p.priceRon))}{" "}
+                              <span className="text-sm text-slate-400">RON</span>
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              ({formatRon(p.priceRon)} fără TVA)
+                            </div>
                           </div>
 
                           <button
+                            type="button"
                             disabled={p.stock <= 0}
-                            onClick={() => selectProduct(p)}
-                            className="mt-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-cyan-500/20 transition hover:shadow-cyan-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              selectProduct(p);
+                            }}
+                            className="rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-cyan-500/20 transition hover:shadow-cyan-500/40 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             Selectează
                           </button>
@@ -763,7 +821,7 @@ export default function Configurator() {
 
                     {filteredPickerProducts.length === 0 && (
                       <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 text-slate-300">
-                        Niciun produs compatibil găsit.
+                        Niciun produs găsit pentru această categorie.
                       </div>
                     )}
                   </div>

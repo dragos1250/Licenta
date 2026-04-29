@@ -15,8 +15,7 @@ import {
 } from "lucide-react";
 
 export default function Home() {
-
-return (
+  return (
     <div className="relative overflow-hidden">
       {/* Hero Section */}
       <section className="relative px-6 pb-20 pt-16">
@@ -88,6 +87,7 @@ return (
                   <br />
                   propriul PC
                 </h2>
+
                 <p className="mb-6 leading-relaxed text-slate-400">
                   Control complet asupra fiecărei componente. Alege din mii de
                   produse, compară specificații și construiește exact ce-ți
@@ -102,12 +102,14 @@ return (
                     </div>
                     Verificare compatibilitate în timp real
                   </li>
+
                   <li className="flex items-center gap-3 text-sm text-slate-300">
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-500/10">
                       <TrendingUp className="h-3.5 w-3.5 text-cyan-400" />
                     </div>
                     Optimizare buget și performanță
                   </li>
+
                   <li className="flex items-center gap-3 text-sm text-slate-300">
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-500/10">
                       <Shield className="h-3.5 w-3.5 text-cyan-400" />
@@ -141,20 +143,23 @@ return (
                   <div className="absolute bottom-0 left-0 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl" />
                 </div>
 
-                {/* Icon with Pulse Animation */}
-                <div className="relative mb-6 inline-flex h-16 w-16 items-center justify-center">
-                  <div className="absolute inset-0 animate-ping rounded-2xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 opacity-75" />
-                  <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 ring-1 ring-purple-500/30 transition-all duration-500 group-hover:scale-110 group-hover:ring-purple-400/50">
-                    <Sparkles className="h-8 w-8 text-purple-400" />
+                {/* Header: Icon + Badge */}
+                <div className="mb-6 flex items-center justify-between gap-4">
+                  {/* Icon with Pulse Animation */}
+                  <div className="relative inline-flex h-16 w-16 shrink-0 items-center justify-center">
+                    <div className="absolute inset-0 animate-ping rounded-2xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 opacity-75" />
+                    <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 ring-1 ring-purple-500/30 transition-all duration-500 group-hover:scale-110 group-hover:ring-purple-400/50">
+                      <Sparkles className="h-8 w-8 text-purple-400" />
+                    </div>
                   </div>
-                </div>
 
-                {/* Badge */}
-                <div className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-purple-500/10 to-cyan-500/10 px-3 py-1 ring-1 ring-purple-500/20">
-                  <Sparkles className="h-3 w-3 text-purple-400" />
-                  <span className="text-xs font-semibold uppercase tracking-wide text-purple-300">
-                    Powered by AI
-                  </span>
+                  {/* Badge */}
+                  <div className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-r from-purple-500/10 to-cyan-500/10 px-3 py-1 ring-1 ring-purple-500/20">
+                    <Sparkles className="h-3 w-3 text-purple-400" />
+                    <span className="text-xs font-semibold uppercase tracking-wide text-purple-300">
+                      Powered by AI
+                    </span>
+                  </div>
                 </div>
 
                 {/* Content */}
@@ -165,6 +170,7 @@ return (
                     Configurare inteligentă
                   </span>
                 </h2>
+
                 <p className="mb-6 leading-relaxed text-slate-400">
                   Lasă inteligența artificială să îți creeze configurația
                   perfectă. Răspunde la câteva întrebări și primești recomandări
@@ -179,12 +185,14 @@ return (
                     </div>
                     Recomandări bazate pe AI și machine learning
                   </li>
+
                   <li className="flex items-center gap-3 text-sm text-slate-300">
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-500/10">
                       <Users className="h-3.5 w-3.5 text-purple-400" />
                     </div>
                     Configurații optimizate pentru utilizarea ta
                   </li>
+
                   <li className="flex items-center gap-3 text-sm text-slate-300">
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-500/10">
                       <Award className="h-3.5 w-3.5 text-purple-400" />
@@ -213,19 +221,21 @@ return (
             className="mb-20 grid gap-6 md:grid-cols-3"
           >
             <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 text-center backdrop-blur-sm">
-              <div className="mb-2 text-4xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+              <div className="mb-2 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-4xl font-bold text-transparent">
                 15,000+
               </div>
               <div className="text-sm text-slate-400">Produse disponibile</div>
             </div>
+
             <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 text-center backdrop-blur-sm">
-              <div className="mb-2 text-4xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+              <div className="mb-2 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-4xl font-bold text-transparent">
                 50,000+
               </div>
               <div className="text-sm text-slate-400">Configurații create</div>
             </div>
+
             <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 text-center backdrop-blur-sm">
-              <div className="mb-2 text-4xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+              <div className="mb-2 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-4xl font-bold text-transparent">
                 98%
               </div>
               <div className="text-sm text-slate-400">Clienți mulțumiți</div>
@@ -241,15 +251,18 @@ return (
             <h2 className="mb-8 text-center text-3xl font-bold text-white">
               Categorii populare
             </h2>
+
             <div className="grid gap-6 md:grid-cols-3">
               <Link
-                 to="/components/Procesoare"
+                to="/components/Procesoare"
                 className="group relative overflow-hidden rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm transition-all hover:border-cyan-500/50 hover:bg-slate-800/50"
               >
                 <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-cyan-500/10 transition-all group-hover:scale-110 group-hover:bg-cyan-500/20">
                   <Cpu className="h-6 w-6 text-cyan-400" />
                 </div>
+
                 <h3 className="mb-2 font-semibold text-white">Procesoare</h3>
+
                 <p className="text-sm text-slate-400">
                   Intel & AMD cele mai noi generații
                 </p>
@@ -262,7 +275,9 @@ return (
                 <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-cyan-500/10 transition-all group-hover:scale-110 group-hover:bg-cyan-500/20">
                   <MonitorCheck className="h-6 w-6 text-cyan-400" />
                 </div>
+
                 <h3 className="mb-2 font-semibold text-white">Plăci video</h3>
+
                 <p className="text-sm text-slate-400">
                   NVIDIA & AMD pentru gaming și productivitate
                 </p>
@@ -275,7 +290,9 @@ return (
                 <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-cyan-500/10 transition-all group-hover:scale-110 group-hover:bg-cyan-500/20">
                   <HardDrive className="h-6 w-6 text-cyan-400" />
                 </div>
+
                 <h3 className="mb-2 font-semibold text-white">Stocare</h3>
+
                 <p className="text-sm text-slate-400">
                   SSD NVMe ultra-rapide și HDD de capacitate
                 </p>
@@ -286,5 +303,4 @@ return (
       </section>
     </div>
   );
-
 }

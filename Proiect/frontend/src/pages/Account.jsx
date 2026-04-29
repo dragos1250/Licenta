@@ -29,6 +29,7 @@ import {
   EyeOff,
   KeyRound,
   AlertTriangle,
+  Search,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import api from "../lib/api";
@@ -74,6 +75,46 @@ function Button({
     >
       {children}
     </button>
+  );
+}
+
+function Modal({
+  children,
+  onClose,
+  maxWidth = "max-w-2xl",
+  disableScroll = false,
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6">
+      <div
+        className={`relative max-h-[90vh] w-full ${maxWidth} ${
+          disableScroll ? "overflow-hidden" : "overflow-y-auto"
+        } rounded-2xl border border-slate-700/60 bg-slate-950/95 p-5 shadow-2xl backdrop-blur-xl sm:p-6`}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, icon: Icon, children }) {
+  return (
+    <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5 backdrop-blur-sm sm:p-6">
+      <label className="mb-2 block text-sm font-medium text-slate-400">
+        {label}
+      </label>
+      <div className="flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-800 px-4 py-3">
+        {Icon && <Icon className="h-5 w-5 flex-shrink-0 text-slate-500" />}
+        {children}
+      </div>
+    </div>
   );
 }
 
@@ -205,13 +246,43 @@ const emptyAddressForm = {
   isDefault: false,
 };
 
+const VAT_RATE = 0.21;
+
+function grossFromNet(net) {
+  return Number(net || 0) * (1 + VAT_RATE);
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function normalizeSlotKey(slotKey, fallbackLabel = "") {
+  const raw = normalizeText(slotKey || fallbackLabel);
+
+  if (["cpu", "procesor", "procesoare"].includes(raw)) return "cpu";
+  if (["gpu", "placa video", "placi video"].includes(raw)) return "gpu";
+  if (["ram", "memorie ram"].includes(raw)) return "ram";
+  if (["storage", "stocare", "ssd", "hdd"].includes(raw)) return "storage";
+  if (["motherboard", "placa de baza", "placi de baza"].includes(raw)) {
+    return "motherboard";
+  }
+  if (["psu", "sursa", "surse", "sursa alimentare"].includes(raw)) return "psu";
+  if (["case", "carcasa", "carcase"].includes(raw)) return "case";
+  if (["cooling", "cooler", "coolere"].includes(raw)) return "cooling";
+
+  return raw || "";
+}
+
 export default function Account() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
   const [tab, setTab] = useState("orders");
 
-  // Orders
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [ordersError, setOrdersError] = useState("");
   const [orders, setOrders] = useState([]);
@@ -220,14 +291,28 @@ export default function Account() {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [orderModalError, setOrderModalError] = useState("");
 
-  // Builds
   const [buildsLoading, setBuildsLoading] = useState(true);
   const [buildsError, setBuildsError] = useState("");
   const [builds, setBuilds] = useState([]);
   const [buildCartLoadingId, setBuildCartLoadingId] = useState("");
   const [buildDeleteLoadingId, setBuildDeleteLoadingId] = useState("");
+  const [showBuildEditModal, setShowBuildEditModal] = useState(false);
+  const [selectedBuildForEdit, setSelectedBuildForEdit] = useState(null);
+  const [buildDraftItems, setBuildDraftItems] = useState([]);
+  const [buildEditName, setBuildEditName] = useState("");
+  const [buildEditError, setBuildEditError] = useState("");
+  const [buildEditSuccess, setBuildEditSuccess] = useState("");
+  const [buildEditSaveLoading, setBuildEditSaveLoading] = useState(false);
+  const [buildPickerOpen, setBuildPickerOpen] = useState(false);
+  const [buildPickerSlot, setBuildPickerSlot] = useState(null);
+  const [buildPickerProducts, setBuildPickerProducts] = useState([]);
+  const [buildPickerQuery, setBuildPickerQuery] = useState("");
+  const [buildPickerLoading, setBuildPickerLoading] = useState(false);
+  const [buildPickerError, setBuildPickerError] = useState("");
+  const [buildEditCompatibility, setBuildEditCompatibility] = useState(null);
+  const [buildEditCompatibilityLoading, setBuildEditCompatibilityLoading] =
+    useState(false);
 
-  // Wishlist
   const [wishlistLoading, setWishlistLoading] = useState(true);
   const [wishlistError, setWishlistError] = useState("");
   const [wishlistStats, setWishlistStats] = useState({
@@ -235,7 +320,6 @@ export default function Account() {
     totalItems: 0,
   });
 
-  // Profile
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState("");
   const [profileSaveLoading, setProfileSaveLoading] = useState(false);
@@ -248,7 +332,6 @@ export default function Account() {
   });
   const [profileRoles, setProfileRoles] = useState([]);
 
-  // Change password
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [changePasswordForm, setChangePasswordForm] = useState({
     currentPassword: "",
@@ -262,7 +345,6 @@ export default function Account() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Delete account
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [deleteAccountForm, setDeleteAccountForm] = useState({
     confirmationText: "",
@@ -272,7 +354,6 @@ export default function Account() {
   const [deleteAccountError, setDeleteAccountError] = useState("");
   const [showDeletePassword, setShowDeletePassword] = useState(false);
 
-  // Addresses
   const [addressesLoading, setAddressesLoading] = useState(true);
   const [addressesError, setAddressesError] = useState("");
   const [addresses, setAddresses] = useState([]);
@@ -301,13 +382,99 @@ export default function Account() {
     return hasAdminRole(user);
   }, [profileRoles, user]);
 
+  const buildEditNetTotal = useMemo(
+    () =>
+      buildDraftItems.reduce(
+        (sum, item) =>
+          sum + Number(item.unitPriceRon || 0) * Number(item.quantity || 1),
+        0
+      ),
+    [buildDraftItems]
+  );
+
+  const buildEditGrossTotal = useMemo(
+    () => grossFromNet(buildEditNetTotal),
+    [buildEditNetTotal]
+  );
+
+  const buildEditSnapshot = useMemo(() => {
+    if (!selectedBuildForEdit) return null;
+
+    return {
+      ...selectedBuildForEdit,
+      name: buildEditName.trim() || selectedBuildForEdit.name,
+      items: buildDraftItems,
+      totalNetRon: Math.round(buildEditNetTotal),
+      totalVatRon: Math.round(buildEditGrossTotal - buildEditNetTotal),
+      totalGrossRon: Math.round(buildEditGrossTotal),
+      isCompatible: buildEditCompatibility?.isCompatible ?? selectedBuildForEdit.isCompatible,
+      estimatedSystemPowerW:
+        buildEditCompatibility?.estimatedSystemPowerW ??
+        selectedBuildForEdit.estimatedSystemPowerW,
+      recommendedPsuW:
+        buildEditCompatibility?.recommendedPsuW ??
+        selectedBuildForEdit.recommendedPsuW,
+    };
+  }, [
+    selectedBuildForEdit,
+    buildEditName,
+    buildDraftItems,
+    buildEditNetTotal,
+    buildEditGrossTotal,
+  ]);
+
+  const buildPickerSelectedMap = useMemo(() => {
+    return buildDraftItems.reduce((acc, item) => {
+      const slotKey = normalizeSlotKey(item.slotKey, item.slotLabel || item.category);
+      if (slotKey && item.productId) {
+        acc[slotKey] = item.productId;
+      }
+      return acc;
+    }, {});
+  }, [buildDraftItems]);
+
+  const filteredBuildPickerProducts = useMemo(() => {
+    const q = normalizeText(buildPickerQuery);
+    if (!q) return buildPickerProducts;
+
+    return buildPickerProducts.filter((product) => {
+      const haystack = normalizeText(
+        `${product.name || ""} ${product.brand || ""} ${product.category || ""}`
+      );
+      return haystack.includes(q);
+    });
+  }, [buildPickerProducts, buildPickerQuery]);
+
+  const activeBuildCompatibility = useMemo(() => {
+    return {
+      isCompatible:
+        buildEditCompatibility?.isCompatible ??
+        selectedBuildForEdit?.isCompatible ??
+        true,
+      errors: Array.isArray(buildEditCompatibility?.errors)
+        ? buildEditCompatibility.errors
+        : [],
+      warnings: Array.isArray(buildEditCompatibility?.warnings)
+        ? buildEditCompatibility.warnings
+        : [],
+      estimatedSystemPowerW:
+        buildEditCompatibility?.estimatedSystemPowerW ??
+        selectedBuildForEdit?.estimatedSystemPowerW ??
+        0,
+      recommendedPsuW:
+        buildEditCompatibility?.recommendedPsuW ??
+        selectedBuildForEdit?.recommendedPsuW ??
+        0,
+    };
+  }, [buildEditCompatibility, selectedBuildForEdit]);
+
   const TabButton = ({ value, icon: Icon, children }) => {
     const active = tab === value;
     return (
       <button
         type="button"
         onClick={() => setTab(value)}
-        className={`flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition ${
+        className={`flex shrink-0 items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition sm:px-4 ${
           active
             ? "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400"
             : "text-slate-300 hover:text-cyan-300"
@@ -499,11 +666,227 @@ export default function Account() {
     }
   };
 
-  const editBuild = (build) => {
-    alert(
-      `Editarea build-ului "${build.name}" o facem în pasul următor. Momentan poți crea unul nou din Configurator.`
+  const openEditBuildModal = (build) => {
+    setSelectedBuildForEdit(build || null);
+    setBuildDraftItems(Array.isArray(build?.items) ? build.items : []);
+    setBuildEditName(build?.name || "");
+    setBuildEditError("");
+    setBuildEditSuccess("");
+    setBuildPickerOpen(false);
+    setBuildPickerSlot(null);
+    setBuildPickerProducts([]);
+    setBuildPickerQuery("");
+    setBuildPickerError("");
+    setBuildEditCompatibility({
+      isCompatible: build?.isCompatible !== false,
+      errors: [],
+      warnings: [],
+      estimatedSystemPowerW: Number(build?.estimatedSystemPowerW || 0),
+      recommendedPsuW: Number(build?.recommendedPsuW || 0),
+    });
+    setShowBuildEditModal(true);
+  };
+
+  const closeEditBuildModal = () => {
+    setShowBuildEditModal(false);
+    setSelectedBuildForEdit(null);
+    setBuildDraftItems([]);
+    setBuildEditName("");
+    setBuildEditError("");
+    setBuildEditSuccess("");
+    setBuildPickerOpen(false);
+    setBuildPickerSlot(null);
+    setBuildPickerProducts([]);
+    setBuildPickerQuery("");
+    setBuildPickerError("");
+    setBuildEditCompatibility(null);
+    setBuildEditCompatibilityLoading(false);
+  };
+
+  const openBuildPicker = async (component) => {
+    const slotKey = normalizeSlotKey(
+      component?.slotKey,
+      component?.slotLabel || component?.category
     );
-    navigate("/configurator");
+
+    setBuildEditError("");
+    setBuildEditSuccess("");
+    setBuildPickerError("");
+    setBuildPickerQuery("");
+    setBuildPickerProducts([]);
+    setBuildPickerSlot({ ...component, normalizedSlotKey: slotKey });
+    setBuildPickerOpen(true);
+
+    if (!slotKey) {
+      setBuildPickerError("Nu pot identifica slotul acestei componente.");
+      return;
+    }
+
+    try {
+      setBuildPickerLoading(true);
+
+      // Important:
+      // În editorul de build-uri salvate afișăm toate produsele din aceeași categorie,
+      // nu doar produsele filtrate de compatibilitatea din Configurator.
+      // Altfel, aceeași placă video poate apărea într-un build și dispărea în altul
+      // din cauza PSU-ului, carcasei sau altor reguli de compatibilitate.
+      const res = await api.get("/products");
+      const allProducts = Array.isArray(res.data) ? res.data : [];
+
+      const categoryNeedle = normalizeText(component?.category || component?.slotLabel);
+      const slotNeedle = normalizeText(component?.slotLabel || component?.slotKey);
+
+      const matchingProducts = allProducts
+        .filter((product) => {
+          const productCategory = normalizeText(product.category);
+
+          return (
+            productCategory === categoryNeedle ||
+            productCategory === slotNeedle ||
+            productCategory.includes(categoryNeedle) ||
+            categoryNeedle.includes(productCategory) ||
+            productCategory.includes(slotNeedle) ||
+            slotNeedle.includes(productCategory)
+          );
+        })
+        .sort((a, b) => {
+          const stockA = Number(a.stock || 0) > 0 ? 1 : 0;
+          const stockB = Number(b.stock || 0) > 0 ? 1 : 0;
+
+          if (stockA !== stockB) return stockB - stockA;
+
+          return Number(b.priceRon || 0) - Number(a.priceRon || 0);
+        });
+
+      setBuildPickerProducts(matchingProducts);
+    } catch (e) {
+      setBuildPickerError(
+        e?.response?.data?.error ||
+          e?.response?.data?.message ||
+          "Nu am putut încărca produsele pentru acest slot."
+      );
+      setBuildPickerProducts([]);
+    } finally {
+      setBuildPickerLoading(false);
+    }
+  };
+
+  const closeBuildPicker = () => {
+    setBuildPickerOpen(false);
+    setBuildPickerSlot(null);
+    setBuildPickerProducts([]);
+    setBuildPickerQuery("");
+    setBuildPickerError("");
+  };
+
+  const selectBuildReplacementProduct = (product) => {
+    if (!buildPickerSlot || !product?.id) return;
+
+    const pickerSlotKey = normalizeSlotKey(
+      buildPickerSlot.slotKey || buildPickerSlot.normalizedSlotKey,
+      buildPickerSlot.slotLabel || buildPickerSlot.category
+    );
+
+    setBuildDraftItems((prev) =>
+      prev.map((item) => {
+        const itemSlotKey = normalizeSlotKey(
+          item.slotKey,
+          item.slotLabel || item.category
+        );
+
+        if (item.id !== buildPickerSlot.id && itemSlotKey !== pickerSlotKey) {
+          return item;
+        }
+
+        return {
+          ...item,
+          productId: product.id,
+          productName: product.name,
+          brand: product.brand,
+          category: product.category,
+          imageUrl: product.imageUrl || item.imageUrl || "",
+          unitPriceRon: Number(product.priceRon || 0),
+          quantity: Number(item.quantity || 1),
+          slotKey: item.slotKey || pickerSlotKey,
+          slotLabel: item.slotLabel || buildPickerSlot.slotLabel,
+        };
+      })
+    );
+
+    closeBuildPicker();
+  };
+
+  const handleSaveBuildEdit = async () => {
+    const nextName = buildEditName.trim();
+
+    setBuildEditError("");
+    setBuildEditSuccess("");
+
+    if (!selectedBuildForEdit?.id) {
+      setBuildEditError("Build-ul selectat nu este valid.");
+      return;
+    }
+
+    if (!nextName) {
+      setBuildEditError("Numele configurației nu poate fi gol.");
+      return;
+    }
+
+    const editableItems = buildDraftItems
+      .filter((item) => item.productId)
+      .map((item) => ({
+        slotKey: normalizeSlotKey(item.slotKey, item.slotLabel || item.category),
+        slotId: normalizeSlotKey(item.slotKey, item.slotLabel || item.category),
+        slotLabel: item.slotLabel,
+        productId: item.productId,
+        quantity: Number(item.quantity || 1),
+      }));
+
+    try {
+      setBuildEditSaveLoading(true);
+
+      const res = await api.patch(`/builds/${selectedBuildForEdit.id}`, {
+        name: nextName,
+        items: editableItems,
+      });
+
+      const fallbackUpdatedBuild = {
+        ...buildEditSnapshot,
+        id: selectedBuildForEdit.id,
+        name: nextName,
+        items: buildDraftItems,
+      };
+
+      const updatedBuild = {
+        ...fallbackUpdatedBuild,
+        ...(res.data || {}),
+        name: res.data?.name || nextName,
+        items: Array.isArray(res.data?.items) ? res.data.items : buildDraftItems,
+      };
+
+      setBuilds((prev) =>
+        prev.map((build) =>
+          build.id === selectedBuildForEdit.id ? { ...build, ...updatedBuild } : build
+        )
+      );
+
+      setSelectedBuildForEdit(updatedBuild);
+      setBuildDraftItems(Array.isArray(updatedBuild.items) ? updatedBuild.items : []);
+      setBuildEditSuccess("Configurația a fost actualizată cu succes.");
+      window.dispatchEvent(new Event("builds:updated"));
+    } catch (e) {
+      setBuildEditError(
+        e?.response?.data?.error ||
+          e?.response?.data?.message ||
+          "Nu am putut salva modificările. Backend-ul trebuie să accepte PATCH /builds/:id cu { name, items }."
+      );
+    } finally {
+      setBuildEditSaveLoading(false);
+    }
+  };
+
+  const editBuild = (build) => {
+    openEditBuildModal(build);
   };
 
   const handleProfileFieldChange = (field, value) => {
@@ -816,7 +1199,78 @@ export default function Account() {
       window.removeEventListener("wishlist:updated", onWishlistUpdated);
       window.removeEventListener("builds:updated", onBuildsUpdated);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const shouldLockScroll =
+      showBuildEditModal ||
+      showOrderModal ||
+      showAddressModal ||
+      showChangePasswordModal ||
+      showDeleteAccountModal;
+
+    if (!shouldLockScroll) return;
+
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+    };
+  }, [
+    showBuildEditModal,
+    showOrderModal,
+    showAddressModal,
+    showChangePasswordModal,
+    showDeleteAccountModal,
+  ]);
+
+  useEffect(() => {
+    if (!showBuildEditModal || buildDraftItems.length === 0) return;
+
+    let cancelled = false;
+
+    async function checkBuildDraftCompatibility() {
+      try {
+        setBuildEditCompatibilityLoading(true);
+
+        const res = await api.post("/configurator/compatibility", {
+          selected: buildPickerSelectedMap,
+        });
+
+        if (!cancelled) {
+          setBuildEditCompatibility(
+            res.data || {
+              isCompatible: true,
+              errors: [],
+              warnings: [],
+              estimatedSystemPowerW: 0,
+              recommendedPsuW: 0,
+            }
+          );
+        }
+      } catch {
+        if (!cancelled) {
+          setBuildEditCompatibility((prev) => prev);
+        }
+      } finally {
+        if (!cancelled) {
+          setBuildEditCompatibilityLoading(false);
+        }
+      }
+    }
+
+    checkBuildDraftCompatibility();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showBuildEditModal, buildDraftItems, buildPickerSelectedMap]);
 
   const ordersCount = orders.length;
 
@@ -843,34 +1297,36 @@ export default function Account() {
   }, [wishlistLoading, wishlistError, wishlistStats.listsCount]);
 
   return (
-    <div className="min-h-screen px-6 py-12">
+    <div className="min-h-screen overflow-x-hidden px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-7xl">
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <div className="flex items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="relative">
+          <div className="flex flex-col gap-5 rounded-2xl border border-slate-700/40 bg-slate-900/30 p-5 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:border-0 sm:bg-transparent sm:p-0">
+            <div className="flex min-w-0 flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
+              <div className="relative flex-shrink-0">
                 <div className="absolute inset-0 animate-pulse rounded-full bg-cyan-500/20 blur-xl" />
                 <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 text-2xl font-bold text-white ring-2 ring-cyan-500/30">
                   {initials}
                 </div>
               </div>
 
-              <div>
-                <h1 className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-4xl font-bold text-transparent">
+              <div className="min-w-0">
+                <h1 className="inline-block overflow-visible bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text pb-1 text-4xl font-bold leading-[1.15] text-transparent">
                   {displayName}
                 </h1>
-                <p className="text-slate-400">{displayEmail}</p>
+                <p className="mt-0 break-all text-sm text-slate-400 sm:text-base">
+                  {displayEmail}
+                </p>
               </div>
             </div>
 
             {isAdmin && (
               <Button
                 variant="outline"
-                className="gap-2"
+                className="w-full gap-2 sm:w-auto"
                 type="button"
                 onClick={() => navigate("/admin")}
               >
@@ -885,9 +1341,9 @@ export default function Account() {
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="mb-8 grid gap-6 md:grid-cols-4"
+          className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
         >
-          <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm">
+          <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5 backdrop-blur-sm sm:p-6">
             <div className="mb-2 flex items-center justify-between">
               <Package className="h-5 w-5 text-cyan-400" />
               <Badge className="bg-cyan-500/20 text-cyan-400">Total</Badge>
@@ -896,18 +1352,18 @@ export default function Account() {
             <div className="text-sm text-slate-400">Comenzi plasate</div>
           </div>
 
-          <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm">
+          <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5 backdrop-blur-sm sm:p-6">
             <div className="mb-2 flex items-center justify-between">
               <CreditCard className="h-5 w-5 text-green-400" />
               <Badge className="bg-green-500/20 text-green-400">Total</Badge>
             </div>
-            <div className="text-3xl font-bold text-white">
+            <div className="break-words text-3xl font-bold text-white">
               {formatRon(spentTotal)}
             </div>
             <div className="text-sm text-slate-400">RON cheltuiți</div>
           </div>
 
-          <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm">
+          <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5 backdrop-blur-sm sm:p-6">
             <div className="mb-2 flex items-center justify-between">
               <Cpu className="h-5 w-5 text-cyan-400" />
               <Badge className="bg-cyan-500/20 text-cyan-400">Builds</Badge>
@@ -918,7 +1374,7 @@ export default function Account() {
             <div className="text-sm text-slate-400">Configurații salvate</div>
           </div>
 
-          <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm">
+          <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5 backdrop-blur-sm sm:p-6">
             <div className="mb-2 flex items-center justify-between">
               <Heart className="h-5 w-5 text-pink-400" />
               <Badge className="bg-pink-500/20 text-pink-400">Wishlist</Badge>
@@ -941,32 +1397,34 @@ export default function Account() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.12 }}
         >
-          <div className="mb-8 grid w-full grid-cols-5 rounded-xl border border-slate-700/50 bg-slate-900/50 p-1 backdrop-blur-sm">
-            <TabButton value="orders" icon={Package}>
-              Comenzi
-            </TabButton>
-            <TabButton value="builds" icon={Cpu}>
-              Configurații
-            </TabButton>
-            <TabButton value="profile" icon={User}>
-              Profil
-            </TabButton>
-            <TabButton value="addresses" icon={MapPin}>
-              Adrese
-            </TabButton>
-            <TabButton value="settings" icon={Settings}>
-              Setări
-            </TabButton>
+          <div className="mb-8 overflow-x-auto rounded-xl border border-slate-700/50 bg-slate-900/50 p-1 backdrop-blur-sm">
+            <div className="flex min-w-max gap-1 sm:min-w-0 sm:grid sm:w-full sm:grid-cols-5">
+              <TabButton value="orders" icon={Package}>
+                Comenzi
+              </TabButton>
+              <TabButton value="builds" icon={Cpu}>
+                Configurații
+              </TabButton>
+              <TabButton value="profile" icon={User}>
+                Profil
+              </TabButton>
+              <TabButton value="addresses" icon={MapPin}>
+                Adrese
+              </TabButton>
+              <TabButton value="settings" icon={Settings}>
+                Setări
+              </TabButton>
+            </div>
           </div>
 
           {tab === "orders" && (
             <div className="space-y-4">
-              <div className="mb-4 flex items-center justify-between">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-2xl font-bold text-white">Comenzile mele</h2>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-2"
+                  className="w-full gap-2 sm:w-auto"
                   onClick={fetchMyOrders}
                   disabled={ordersLoading}
                   type="button"
@@ -1010,12 +1468,12 @@ export default function Account() {
                       initial={{ opacity: 0, y: 14 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.06 }}
-                      className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm transition-all hover:border-cyan-500/30 hover:bg-slate-800/50"
+                      className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5 backdrop-blur-sm transition-all hover:border-cyan-500/30 hover:bg-slate-800/50 sm:p-6"
                     >
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="mb-2 flex items-center gap-3">
-                            <h3 className="font-semibold text-white">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-2 flex flex-wrap items-center gap-3">
+                            <h3 className="break-all font-semibold text-white">
                               Comandă #{order.orderNumber || order.id}
                             </h3>
                             <Badge className={statusBadgeClass(order.status)}>
@@ -1023,7 +1481,7 @@ export default function Account() {
                             </Badge>
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
+                          <div className="flex flex-wrap items-center gap-2 text-sm text-slate-400 sm:gap-3">
                             <span>
                               {createdAt
                                 ? createdAt.toLocaleDateString("ro-RO")
@@ -1039,20 +1497,19 @@ export default function Account() {
 
                           {order.shippingMethod === "EASYBOX" && (
                             <div className="mt-3 rounded-lg border border-slate-700/50 bg-slate-950/40 px-3 py-2 text-xs text-slate-300">
-                              Livrare:{" "}
-                              <span className="text-cyan-300">EasyBox</span> —{" "}
-                              {order.easyboxLockerName || "—"}
+                              Livrare: <span className="text-cyan-300">EasyBox</span> — {order.easyboxLockerName || "—"}
                             </div>
                           )}
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="grid gap-2 sm:flex">
                           <Button
                             variant="outline"
                             size="sm"
                             type="button"
                             onClick={() => openOrderDetails(order.id)}
                             disabled={orderDetailsLoadingId === order.id}
+                            className="w-full sm:w-auto"
                           >
                             {orderDetailsLoadingId === order.id
                               ? "Se încarcă..."
@@ -1065,6 +1522,7 @@ export default function Account() {
                               size="sm"
                               type="button"
                               onClick={() => alert("Comandă din nou (în curând)")}
+                              className="w-full sm:w-auto"
                             >
                               Comandă din nou
                             </Button>
@@ -1077,266 +1535,230 @@ export default function Account() {
               )}
 
               {showOrderModal && selectedOrder && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-                  <div className="relative max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-slate-700/60 bg-slate-950/95 p-6 shadow-2xl backdrop-blur-xl">
-                    <button
-                      type="button"
-                      onClick={closeOrderModal}
-                      className="absolute right-4 top-4 rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white"
-                    >
-                      <X className="h-5 w-5" />
-                    </button>
-
-                    <div className="mb-6 flex flex-col gap-4 border-b border-slate-700/50 pb-6 md:flex-row md:items-start md:justify-between">
-                      <div>
-                        <div className="mb-2 flex items-center gap-3">
-                          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 ring-1 ring-cyan-500/30">
-                            <ReceiptText className="h-5 w-5 text-cyan-400" />
-                          </div>
-
-                          <div>
-                            <h3 className="text-2xl font-bold text-white">
-                              Comandă #{selectedOrder.orderNumber || selectedOrder.id}
-                            </h3>
-                            <p className="text-sm text-slate-400">
-                              Detalii complete despre comandă
-                            </p>
-                          </div>
+                <Modal onClose={closeOrderModal} maxWidth="max-w-5xl">
+                  <div className="mb-6 flex flex-col gap-4 border-b border-slate-700/50 pb-6 md:flex-row md:items-start md:justify-between">
+                    <div className="pr-10">
+                      <div className="mb-2 flex items-center gap-3">
+                        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 ring-1 ring-cyan-500/30">
+                          <ReceiptText className="h-5 w-5 text-cyan-400" />
                         </div>
 
-                        <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-400">
-                          <div className="inline-flex items-center gap-2">
-                            <CalendarDays className="h-4 w-4 text-cyan-400" />
-                            {formatDateRo(selectedOrder.createdAt)}
-                          </div>
-
-                          <Badge className={statusBadgeClass(selectedOrder.status)}>
-                            {statusLabel(selectedOrder.status)}
-                          </Badge>
+                        <div className="min-w-0">
+                          <h3 className="break-all text-xl font-bold text-white sm:text-2xl">
+                            Comandă #{selectedOrder.orderNumber || selectedOrder.id}
+                          </h3>
+                          <p className="text-sm text-slate-400">
+                            Detalii complete despre comandă
+                          </p>
                         </div>
                       </div>
 
-                      <div className="text-left md:text-right">
-                        <div className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-3xl font-bold text-transparent">
-                          {formatRon(selectedOrder.totalRon)} RON
+                      <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-400">
+                        <div className="inline-flex items-center gap-2">
+                          <CalendarDays className="h-4 w-4 text-cyan-400" />
+                          {formatDateRo(selectedOrder.createdAt)}
                         </div>
-                        <div className="text-xs text-slate-400">Total comandă</div>
+
+                        <Badge className={statusBadgeClass(selectedOrder.status)}>
+                          {statusLabel(selectedOrder.status)}
+                        </Badge>
                       </div>
                     </div>
 
-                    <div className="grid gap-6 lg:grid-cols-3">
-                      <div className="space-y-6 lg:col-span-2">
-                        <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
-                          <div className="mb-4 flex items-center gap-2">
-                            <PackageOpen className="h-5 w-5 text-cyan-400" />
-                            <h4 className="text-lg font-semibold text-white">
-                              Produse
-                            </h4>
-                          </div>
+                    <div className="text-left md:text-right">
+                      <div className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-3xl font-bold text-transparent">
+                        {formatRon(selectedOrder.totalRon)} RON
+                      </div>
+                      <div className="text-xs text-slate-400">Total comandă</div>
+                    </div>
+                  </div>
 
-                          <div className="space-y-3">
-                            {(selectedOrder.items || []).map((item) => (
-                              <div
-                                key={item.id}
-                                className="rounded-lg border border-slate-700/40 bg-slate-800/30 p-4"
-                              >
-                                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                                  <div className="flex-1">
-                                    <div className="mb-1 flex flex-wrap items-center gap-2">
-                                      <Badge className="border border-cyan-500/30 bg-cyan-500/10 text-cyan-400">
-                                        {item.category}
-                                      </Badge>
-                                      <span className="text-xs text-slate-500">
-                                        {item.brand}
-                                      </span>
-                                    </div>
+                  <div className="grid gap-6 lg:grid-cols-3">
+                    <div className="space-y-6 lg:col-span-2">
+                      <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+                        <div className="mb-4 flex items-center gap-2">
+                          <PackageOpen className="h-5 w-5 text-cyan-400" />
+                          <h4 className="text-lg font-semibold text-white">
+                            Produse
+                          </h4>
+                        </div>
 
-                                    <h5 className="font-medium text-white">
-                                      {item.productName}
-                                    </h5>
-
-                                    <p className="mt-1 text-sm text-slate-400">
-                                      Cantitate: {item.quantity} ×{" "}
-                                      {formatRon(item.unitPriceRon)} RON
-                                    </p>
+                        <div className="space-y-3">
+                          {(selectedOrder.items || []).map((item) => (
+                            <div
+                              key={item.id}
+                              className="rounded-lg border border-slate-700/40 bg-slate-800/30 p-4"
+                            >
+                              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                <div className="min-w-0 flex-1">
+                                  <div className="mb-1 flex flex-wrap items-center gap-2">
+                                    <Badge className="border border-cyan-500/30 bg-cyan-500/10 text-cyan-400">
+                                      {item.category}
+                                    </Badge>
+                                    <span className="text-xs text-slate-500">
+                                      {item.brand}
+                                    </span>
                                   </div>
 
-                                  <div className="text-left md:text-right">
-                                    <div className="font-semibold text-cyan-400">
-                                      {formatRon(item.lineTotalRon)} RON
-                                    </div>
-                                    <div className="text-xs text-slate-500">
-                                      Subtotal produs
-                                    </div>
+                                  <h5 className="break-words font-medium text-white">
+                                    {item.productName}
+                                  </h5>
+
+                                  <p className="mt-1 text-sm text-slate-400">
+                                    Cantitate: {item.quantity} × {formatRon(item.unitPriceRon)} RON
+                                  </p>
+                                </div>
+
+                                <div className="text-left md:text-right">
+                                  <div className="font-semibold text-cyan-400">
+                                    {formatRon(item.lineTotalRon)} RON
+                                  </div>
+                                  <div className="text-xs text-slate-500">
+                                    Subtotal produs
                                   </div>
                                 </div>
                               </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="grid gap-6 md:grid-cols-2">
-                          <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
-                            <div className="mb-4 flex items-center gap-2">
-                              <Truck className="h-5 w-5 text-cyan-400" />
-                              <h4 className="text-lg font-semibold text-white">
-                                Livrare
-                              </h4>
                             </div>
-
-                            <div className="space-y-2 text-sm text-slate-300">
-                              <p>
-                                <span className="text-slate-400">Metodă:</span>{" "}
-                                {shippingMethodLabel(selectedOrder.shippingMethod)}
-                              </p>
-
-                              {selectedOrder.shippingMethod === "EASYBOX" ? (
-                                <>
-                                  <p>
-                                    <span className="text-slate-400">Locker:</span>{" "}
-                                    {selectedOrder.easyboxLockerName || "—"}
-                                  </p>
-                                  <p>
-                                    <span className="text-slate-400">Oraș:</span>{" "}
-                                    {selectedOrder.easyboxCity || "—"}
-                                  </p>
-                                </>
-                              ) : (
-                                <>
-                                  <p>
-                                    <span className="text-slate-400">Adresă:</span>{" "}
-                                    {selectedOrder.shippingStreet || "—"}
-                                  </p>
-                                  <p>
-                                    <span className="text-slate-400">Localitate:</span>{" "}
-                                    {selectedOrder.shippingCity || "—"},{" "}
-                                    {selectedOrder.shippingCounty || "—"}
-                                  </p>
-                                  <p>
-                                    <span className="text-slate-400">Cod poștal:</span>{" "}
-                                    {selectedOrder.shippingPostalCode || "—"}
-                                  </p>
-                                </>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
-                            <div className="mb-4 flex items-center gap-2">
-                              <CreditCard className="h-5 w-5 text-cyan-400" />
-                              <h4 className="text-lg font-semibold text-white">
-                                Plată
-                              </h4>
-                            </div>
-
-                            <div className="space-y-2 text-sm text-slate-300">
-                              <p>
-                                <span className="text-slate-400">Metodă:</span>{" "}
-                                {paymentMethodLabel(selectedOrder.paymentMethod)}
-                              </p>
-                              <p>
-                                <span className="text-slate-400">Status:</span>{" "}
-                                {statusLabel(selectedOrder.status)}
-                              </p>
-                            </div>
-                          </div>
+                          ))}
                         </div>
                       </div>
 
-                      <div className="space-y-6">
+                      <div className="grid gap-6 md:grid-cols-2">
                         <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
                           <div className="mb-4 flex items-center gap-2">
-                            <User className="h-5 w-5 text-cyan-400" />
+                            <Truck className="h-5 w-5 text-cyan-400" />
                             <h4 className="text-lg font-semibold text-white">
-                              Client
+                              Livrare
                             </h4>
                           </div>
 
                           <div className="space-y-2 text-sm text-slate-300">
-                            <p>{selectedOrder.customerName || "—"}</p>
-                            <p>{selectedOrder.customerEmail || "—"}</p>
-                            <p>{selectedOrder.customerPhone || "—"}</p>
+                            <p>
+                              <span className="text-slate-400">Metodă:</span> {shippingMethodLabel(selectedOrder.shippingMethod)}
+                            </p>
+
+                            {selectedOrder.shippingMethod === "EASYBOX" ? (
+                              <>
+                                <p><span className="text-slate-400">Locker:</span> {selectedOrder.easyboxLockerName || "—"}</p>
+                                <p><span className="text-slate-400">Oraș:</span> {selectedOrder.easyboxCity || "—"}</p>
+                              </>
+                            ) : (
+                              <>
+                                <p><span className="text-slate-400">Adresă:</span> {selectedOrder.shippingStreet || "—"}</p>
+                                <p><span className="text-slate-400">Localitate:</span> {selectedOrder.shippingCity || "—"}, {selectedOrder.shippingCounty || "—"}</p>
+                                <p><span className="text-slate-400">Cod poștal:</span> {selectedOrder.shippingPostalCode || "—"}</p>
+                              </>
+                            )}
                           </div>
                         </div>
 
                         <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
                           <div className="mb-4 flex items-center gap-2">
-                            <ReceiptText className="h-5 w-5 text-cyan-400" />
+                            <CreditCard className="h-5 w-5 text-cyan-400" />
                             <h4 className="text-lg font-semibold text-white">
-                              Sumar
+                              Plată
                             </h4>
                           </div>
 
-                          <div className="space-y-3 text-sm">
-                            <div className="flex items-center justify-between text-slate-300">
-                              <span>Subtotal produse</span>
-                              <span>{formatRon(selectedOrder.subtotalRon)} RON</span>
-                            </div>
-
-                            <div className="flex items-center justify-between text-slate-300">
-                              <span>TVA</span>
-                              <span>{formatRon(selectedOrder.vatRon)} RON</span>
-                            </div>
-
-                            <div className="flex items-center justify-between text-slate-300">
-                              <span>Transport</span>
-                              <span>{formatRon(selectedOrder.shippingFeeRon)} RON</span>
-                            </div>
-
-                            <div className="flex items-center justify-between text-slate-300">
-                              <span>Taxă plată</span>
-                              <span>{formatRon(selectedOrder.paymentFeeRon)} RON</span>
-                            </div>
-
-                            <div className="border-t border-slate-700 pt-3">
-                              <div className="flex items-center justify-between font-semibold text-white">
-                                <span>Total</span>
-                                <span className="text-cyan-400">
-                                  {formatRon(selectedOrder.totalRon)} RON
-                                </span>
-                              </div>
-                            </div>
+                          <div className="space-y-2 text-sm text-slate-300">
+                            <p><span className="text-slate-400">Metodă:</span> {paymentMethodLabel(selectedOrder.paymentMethod)}</p>
+                            <p><span className="text-slate-400">Status:</span> {statusLabel(selectedOrder.status)}</p>
                           </div>
-                        </div>
-
-                        <div className="flex gap-3">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="flex-1"
-                            onClick={closeOrderModal}
-                          >
-                            Închide
-                          </Button>
-
-                          {selectedOrder.status === "DELIVERED" && (
-                            <Button
-                              type="button"
-                              className="flex-1"
-                              onClick={() => alert("Comandă din nou (în curând)")}
-                            >
-                              Comandă din nou
-                            </Button>
-                          )}
                         </div>
                       </div>
                     </div>
+
+                    <div className="space-y-6">
+                      <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+                        <div className="mb-4 flex items-center gap-2">
+                          <User className="h-5 w-5 text-cyan-400" />
+                          <h4 className="text-lg font-semibold text-white">
+                            Client
+                          </h4>
+                        </div>
+
+                        <div className="space-y-2 break-words text-sm text-slate-300">
+                          <p>{selectedOrder.customerName || "—"}</p>
+                          <p>{selectedOrder.customerEmail || "—"}</p>
+                          <p>{selectedOrder.customerPhone || "—"}</p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+                        <div className="mb-4 flex items-center gap-2">
+                          <ReceiptText className="h-5 w-5 text-cyan-400" />
+                          <h4 className="text-lg font-semibold text-white">
+                            Sumar
+                          </h4>
+                        </div>
+
+                        <div className="space-y-3 text-sm">
+                          <div className="flex items-center justify-between gap-4 text-slate-300">
+                            <span>Subtotal produse</span>
+                            <span>{formatRon(selectedOrder.subtotalRon)} RON</span>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-4 text-slate-300">
+                            <span>TVA</span>
+                            <span>{formatRon(selectedOrder.vatRon)} RON</span>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-4 text-slate-300">
+                            <span>Transport</span>
+                            <span>{formatRon(selectedOrder.shippingFeeRon)} RON</span>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-4 text-slate-300">
+                            <span>Taxă plată</span>
+                            <span>{formatRon(selectedOrder.paymentFeeRon)} RON</span>
+                          </div>
+
+                          <div className="border-t border-slate-700 pt-3">
+                            <div className="flex items-center justify-between gap-4 font-semibold text-white">
+                              <span>Total</span>
+                              <span className="text-cyan-400">
+                                {formatRon(selectedOrder.totalRon)} RON
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 sm:flex">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full flex-1"
+                          onClick={closeOrderModal}
+                        >
+                          Închide
+                        </Button>
+
+                        {selectedOrder.status === "DELIVERED" && (
+                          <Button
+                            type="button"
+                            className="w-full flex-1"
+                            onClick={() => alert("Comandă din nou (în curând)")}
+                          >
+                            Comandă din nou
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                </Modal>
               )}
             </div>
           )}
 
           {tab === "builds" && (
             <div className="space-y-4">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-white">
-                  Configurații salvate
-                </h2>
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-2xl font-bold text-white">Configurații salvate</h2>
 
                 <Button
                   type="button"
-                  className="gap-2"
+                  className="w-full gap-2 sm:w-auto"
                   onClick={() => navigate("/configurator")}
                 >
                   <Cpu className="h-4 w-4" />
@@ -1358,7 +1780,7 @@ export default function Account() {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.96 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="flex min-h-[40vh] flex-col items-center justify-center rounded-xl border border-slate-700/50 bg-slate-900/50 p-12 backdrop-blur-sm"
+                  className="flex min-h-[40vh] flex-col items-center justify-center rounded-xl border border-slate-700/50 bg-slate-900/50 p-8 text-center backdrop-blur-sm sm:p-12"
                 >
                   <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-slate-800/50">
                     <Cpu className="h-12 w-12 text-slate-600" />
@@ -1372,11 +1794,7 @@ export default function Account() {
                     Începe să construiești PC-ul perfect pentru tine
                   </p>
 
-                  <Button
-                    type="button"
-                    className="gap-2"
-                    onClick={() => navigate("/configurator")}
-                  >
+                  <Button type="button" className="gap-2" onClick={() => navigate("/configurator")}>
                     <Cpu className="h-4 w-4" />
                     Creează build
                   </Button>
@@ -1385,10 +1803,7 @@ export default function Account() {
                 <div className="grid gap-6">
                   {builds.map((build, index) => {
                     const items = Array.isArray(build.items) ? build.items : [];
-                    const totalPrice =
-                      Number(build.totalGrossRon) ||
-                      Number(build.totalNetRon) ||
-                      0;
+                    const totalPrice = Number(build.totalGrossRon) || Number(build.totalNetRon) || 0;
 
                     return (
                       <motion.div
@@ -1398,22 +1813,17 @@ export default function Account() {
                         transition={{ delay: index * 0.08 }}
                         className="group overflow-hidden rounded-xl border border-slate-700/50 bg-slate-900/50 backdrop-blur-sm transition-all hover:border-cyan-500/30 hover:bg-slate-800/50"
                       >
-                        <div className="border-b border-slate-700/50 p-6">
-                          <div className="flex items-start justify-between gap-6">
-                            <div className="flex-1">
+                        <div className="border-b border-slate-700/50 p-5 sm:p-6">
+                          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                            <div className="min-w-0 flex-1">
                               <div className="mb-2 flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20 ring-1 ring-cyan-500/30">
+                                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20 ring-1 ring-cyan-500/30">
                                   <Cpu className="h-5 w-5 text-cyan-400" />
                                 </div>
 
-                                <div>
-                                  <h3 className="text-xl font-semibold text-white">
-                                    {build.name}
-                                  </h3>
-                                  <p className="text-sm text-slate-400">
-                                    {items.length} componente •{" "}
-                                    {formatDateRo(build.createdAt)}
-                                  </p>
+                                <div className="min-w-0">
+                                  <h3 className="break-words text-xl font-semibold text-white">{build.name}</h3>
+                                  <p className="text-sm text-slate-400">{items.length} componente • {formatDateRo(build.createdAt)}</p>
                                 </div>
                               </div>
 
@@ -1424,80 +1834,51 @@ export default function Account() {
                               )}
                             </div>
 
-                            <div className="text-right">
-                              <div className="mb-1 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-3xl font-bold text-transparent">
-                                {formatRon(totalPrice)}
+                            <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-3 py-2 text-center md:text-right">
+                              <div className="flex items-baseline justify-center gap-2 md:justify-end">
+                                <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-3xl font-bold text-transparent">
+                                  {formatRon(totalPrice)}
+                                </span>
+                                <span className="text-sm font-semibold text-slate-400">
+                                  RON
+                                </span>
                               </div>
-                              <div className="text-xs text-slate-400">RON</div>
                             </div>
                           </div>
                         </div>
 
-                        <div className="p-6">
+                        <div className="p-5 sm:p-6">
                           <div className="mb-4 space-y-2">
                             {items.map((component) => (
-                              <div
-                                key={component.id}
-                                className="flex items-center justify-between rounded-lg border border-slate-700/30 bg-slate-800/30 p-3"
-                              >
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2">
+                              <div key={component.id} className="flex flex-col gap-2 rounded-lg border border-slate-700/30 bg-slate-800/30 p-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
                                     <Badge className="border border-cyan-500/30 bg-cyan-500/10 text-cyan-400">
                                       {component.slotLabel || "Componentă"}
                                     </Badge>
-                                    <span className="text-xs text-slate-500">
-                                      {component.brand}
-                                    </span>
+                                    <span className="text-xs text-slate-500">{component.brand}</span>
                                   </div>
-
-                                  <p className="mt-1 text-sm text-white">
-                                    {component.productName}
-                                  </p>
+                                  <p className="mt-1 break-words text-sm text-white">{component.productName}</p>
                                 </div>
-
-                                <div className="text-right">
-                                  <span className="font-semibold text-cyan-400">
-                                    {formatRon(component.unitPriceRon)} RON
-                                  </span>
+                                <div className="text-left sm:text-right">
+                                  <span className="font-semibold text-cyan-400">{formatRon(component.unitPriceRon)} RON</span>
                                 </div>
                               </div>
                             ))}
                           </div>
 
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              type="button"
-                              className="flex-1 gap-2"
-                              onClick={() => addBuildToCart(build)}
-                              disabled={buildCartLoadingId === build.id}
-                            >
+                          <div className="grid gap-2 sm:flex sm:flex-wrap">
+                            <Button type="button" className="w-full gap-2 sm:w-auto sm:flex-1" onClick={() => addBuildToCart(build)} disabled={buildCartLoadingId === build.id}>
                               <ShoppingCart className="h-4 w-4" />
-                              {buildCartLoadingId === build.id
-                                ? "Se adaugă..."
-                                : "Adaugă în coș"}
+                              {buildCartLoadingId === build.id ? "Se adaugă..." : "Adaugă în coș"}
                             </Button>
-
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="gap-2"
-                              onClick={() => editBuild(build)}
-                            >
+                            <Button type="button" variant="outline" className="w-full gap-2 sm:w-auto" onClick={() => editBuild(build)}>
                               <Edit className="h-4 w-4" />
                               Editează
                             </Button>
-
-                            <Button
-                              type="button"
-                              variant="danger"
-                              className="gap-2"
-                              onClick={() => deleteBuild(build.id)}
-                              disabled={buildDeleteLoadingId === build.id}
-                            >
+                            <Button type="button" variant="danger" className="w-full gap-2 sm:w-auto" onClick={() => deleteBuild(build.id)} disabled={buildDeleteLoadingId === build.id}>
                               <Trash2 className="h-4 w-4" />
-                              {buildDeleteLoadingId === build.id
-                                ? "Se șterge..."
-                                : "Șterge"}
+                              {buildDeleteLoadingId === build.id ? "Se șterge..." : "Șterge"}
                             </Button>
                           </div>
                         </div>
@@ -1512,114 +1893,40 @@ export default function Account() {
           {tab === "profile" && (
             <div className="space-y-6">
               <div className="mb-4">
-                <h2 className="text-2xl font-bold text-white">
-                  Informații personale
-                </h2>
+                <h2 className="text-2xl font-bold text-white">Informații personale</h2>
               </div>
 
               {profileError && (
-                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                  {profileError}
-                </div>
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{profileError}</div>
               )}
 
               {profileSaveSuccess && (
-                <div className="rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">
-                  {profileSaveSuccess}
-                </div>
+                <div className="rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">{profileSaveSuccess}</div>
               )}
 
               {profileLoading ? (
-                <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 text-slate-300">
-                  Se încarcă profilul...
-                </div>
+                <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 text-slate-300">Se încarcă profilul...</div>
               ) : (
                 <>
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm">
-                      <label className="mb-2 block text-sm font-medium text-slate-400">
-                        Nume complet
-                      </label>
-                      <div className="flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-800 px-4 py-3">
-                        <User className="h-5 w-5 text-slate-500" />
-                        <input
-                          type="text"
-                          value={profileForm.name}
-                          onChange={(e) =>
-                            handleProfileFieldChange("name", e.target.value)
-                          }
-                          className="flex-1 bg-transparent text-white focus:outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm">
-                      <label className="mb-2 block text-sm font-medium text-slate-400">
-                        Email
-                      </label>
-                      <div className="flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-800 px-4 py-3">
-                        <Mail className="h-5 w-5 text-slate-500" />
-                        <input
-                          type="email"
-                          value={profileForm.email}
-                          onChange={(e) =>
-                            handleProfileFieldChange("email", e.target.value)
-                          }
-                          className="flex-1 bg-transparent text-white focus:outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm">
-                      <label className="mb-2 block text-sm font-medium text-slate-400">
-                        Telefon
-                      </label>
-                      <div className="flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-800 px-4 py-3">
-                        <Phone className="h-5 w-5 text-slate-500" />
-                        <input
-                          type="tel"
-                          value={profileForm.phone}
-                          onChange={(e) =>
-                            handleProfileFieldChange("phone", e.target.value)
-                          }
-                          className="flex-1 bg-transparent text-white focus:outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm">
-                      <label className="mb-2 block text-sm font-medium text-slate-400">
-                        Data nașterii
-                      </label>
-                      <div className="flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-800 px-4 py-3">
-                        <input
-                          type="date"
-                          value={profileForm.dateOfBirth}
-                          onChange={(e) =>
-                            handleProfileFieldChange("dateOfBirth", e.target.value)
-                          }
-                          className="flex-1 bg-transparent text-white focus:outline-none"
-                        />
-                      </div>
-                    </div>
+                  <div className="grid gap-4 md:grid-cols-2 lg:gap-6">
+                    <Field label="Nume complet" icon={User}>
+                      <input type="text" value={profileForm.name} onChange={(e) => handleProfileFieldChange("name", e.target.value)} className="min-w-0 flex-1 bg-transparent text-white focus:outline-none" />
+                    </Field>
+                    <Field label="Email" icon={Mail}>
+                      <input type="email" value={profileForm.email} onChange={(e) => handleProfileFieldChange("email", e.target.value)} className="min-w-0 flex-1 bg-transparent text-white focus:outline-none" />
+                    </Field>
+                    <Field label="Telefon" icon={Phone}>
+                      <input type="tel" value={profileForm.phone} onChange={(e) => handleProfileFieldChange("phone", e.target.value)} className="min-w-0 flex-1 bg-transparent text-white focus:outline-none" />
+                    </Field>
+                    <Field label="Data nașterii">
+                      <input type="date" value={profileForm.dateOfBirth} onChange={(e) => handleProfileFieldChange("dateOfBirth", e.target.value)} className="min-w-0 flex-1 bg-transparent text-white focus:outline-none" />
+                    </Field>
                   </div>
 
-                  <div className="flex justify-end gap-3">
-                    <Button
-                      variant="outline"
-                      type="button"
-                      onClick={fetchMyProfile}
-                    >
-                      Anulează
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={handleSaveProfile}
-                      disabled={profileSaveLoading}
-                    >
-                      {profileSaveLoading
-                        ? "Se salvează..."
-                        : "Salvează modificările"}
+                  <div className="grid gap-3 sm:flex sm:justify-end">
+                    <Button variant="outline" type="button" onClick={fetchMyProfile} className="w-full sm:w-auto">Anulează</Button>
+                    <Button type="button" onClick={handleSaveProfile} disabled={profileSaveLoading} className="w-full sm:w-auto">
+                      {profileSaveLoading ? "Se salvează..." : "Salvează modificările"}
                     </Button>
                   </div>
                 </>
@@ -1629,143 +1936,59 @@ export default function Account() {
 
           {tab === "addresses" && (
             <div className="space-y-6">
-              <div className="mb-4 flex items-center justify-between">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-2xl font-bold text-white">Adresele mele</h2>
-                <Button
-                  type="button"
-                  className="gap-2"
-                  onClick={openCreateAddressModal}
-                >
-                  <Plus className="h-4 w-4" />
-                  Adaugă adresă nouă
+                <Button type="button" className="w-full gap-2 sm:w-auto" onClick={openCreateAddressModal}>
+                  <Plus className="h-4 w-4" /> Adaugă adresă nouă
                 </Button>
               </div>
 
               {addressesError && !showAddressModal && (
-                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                  {addressesError}
-                </div>
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{addressesError}</div>
               )}
-
               {addressSaveSuccess && !showAddressModal && (
-                <div className="rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">
-                  {addressSaveSuccess}
-                </div>
+                <div className="rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">{addressSaveSuccess}</div>
               )}
 
               {addressesLoading ? (
-                <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 text-slate-300">
-                  Se încarcă adresele...
-                </div>
+                <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 text-slate-300">Se încarcă adresele...</div>
               ) : addresses.length === 0 ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.96 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="flex min-h-[32vh] flex-col items-center justify-center rounded-xl border border-slate-700/50 bg-slate-900/50 p-12 backdrop-blur-sm"
-                >
-                  <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-slate-800/50">
-                    <MapPin className="h-12 w-12 text-slate-600" />
-                  </div>
-
-                  <h3 className="mb-2 text-2xl font-bold text-white">
-                    Nicio adresă salvată
-                  </h3>
-
-                  <p className="mb-6 text-slate-400">
-                    Adaugă o adresă pentru checkout mai rapid
-                  </p>
-
-                  <Button
-                    type="button"
-                    className="gap-2"
-                    onClick={openCreateAddressModal}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Adaugă adresă
-                  </Button>
+                <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="flex min-h-[32vh] flex-col items-center justify-center rounded-xl border border-slate-700/50 bg-slate-900/50 p-8 text-center backdrop-blur-sm sm:p-12">
+                  <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-slate-800/50"><MapPin className="h-12 w-12 text-slate-600" /></div>
+                  <h3 className="mb-2 text-2xl font-bold text-white">Nicio adresă salvată</h3>
+                  <p className="mb-6 text-slate-400">Adaugă o adresă pentru checkout mai rapid</p>
+                  <Button type="button" className="gap-2" onClick={openCreateAddressModal}><Plus className="h-4 w-4" />Adaugă adresă</Button>
                 </motion.div>
               ) : (
                 <div className="grid gap-6 md:grid-cols-2">
                   {addresses.map((addr, index) => (
-                    <motion.div
-                      key={addr.id}
-                      initial={{ opacity: 0, y: 14 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.06 }}
-                      className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm"
-                    >
+                    <motion.div key={addr.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06 }} className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5 backdrop-blur-sm sm:p-6">
                       <div className="mb-4 flex items-start justify-between gap-4">
-                        <div>
+                        <div className="min-w-0">
                           <div className="mb-1 flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-cyan-400" />
-                            <h3 className="font-semibold text-white">
-                              {addr.label}
-                            </h3>
+                            <MapPin className="h-4 w-4 flex-shrink-0 text-cyan-400" />
+                            <h3 className="break-words font-semibold text-white">{addr.label}</h3>
                           </div>
-
                           <div className="flex flex-wrap gap-2">
-                            {addr.isDefault && (
-                              <Badge className="bg-cyan-500/20 text-cyan-400">
-                                Implicit
-                              </Badge>
-                            )}
-
-                            {addr.recipientName && (
-                              <Badge className="bg-slate-700/60 text-slate-200">
-                                {addr.recipientName}
-                              </Badge>
-                            )}
+                            {addr.isDefault && <Badge className="bg-cyan-500/20 text-cyan-400">Implicit</Badge>}
+                            {addr.recipientName && <Badge className="bg-slate-700/60 text-slate-200">{addr.recipientName}</Badge>}
                           </div>
                         </div>
                       </div>
 
-                      <div className="mb-4 space-y-1 text-sm text-slate-400">
+                      <div className="mb-4 space-y-1 break-words text-sm text-slate-400">
                         <p>{addr.street}</p>
-                        <p>
-                          {addr.city}, {addr.county}
-                          {addr.postalCode ? `, ${addr.postalCode}` : ""}
-                        </p>
+                        <p>{addr.city}, {addr.county}{addr.postalCode ? `, ${addr.postalCode}` : ""}</p>
                         <p>{addr.country}</p>
                         {addr.phone && <p>Telefon: {addr.phone}</p>}
                       </div>
 
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 gap-2"
-                          type="button"
-                          onClick={() => openEditAddressModal(addr)}
-                        >
-                          <Edit className="h-4 w-4" />
-                          Editează
-                        </Button>
-
+                      <div className="grid gap-2 sm:flex sm:flex-wrap">
+                        <Button variant="outline" size="sm" className="w-full gap-2 sm:w-auto sm:flex-1" type="button" onClick={() => openEditAddressModal(addr)}><Edit className="h-4 w-4" />Editează</Button>
                         {!addr.isDefault && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            type="button"
-                            onClick={() => handleSetDefaultAddress(addr.id)}
-                            disabled={defaultAddressLoadingId === addr.id}
-                          >
-                            {defaultAddressLoadingId === addr.id
-                              ? "Se setează..."
-                              : "Setează implicită"}
-                          </Button>
+                          <Button variant="outline" size="sm" type="button" className="w-full sm:w-auto" onClick={() => handleSetDefaultAddress(addr.id)} disabled={defaultAddressLoadingId === addr.id}>{defaultAddressLoadingId === addr.id ? "Se setează..." : "Setează implicită"}</Button>
                         )}
-
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          type="button"
-                          onClick={() => handleDeleteAddress(addr.id)}
-                          disabled={addressDeleteLoadingId === addr.id}
-                        >
-                          {addressDeleteLoadingId === addr.id
-                            ? "Se șterge..."
-                            : "Șterge"}
-                        </Button>
+                        <Button variant="danger" size="sm" type="button" className="w-full sm:w-auto" onClick={() => handleDeleteAddress(addr.id)} disabled={addressDeleteLoadingId === addr.id}>{addressDeleteLoadingId === addr.id ? "Se șterge..." : "Șterge"}</Button>
                       </div>
                     </motion.div>
                   ))}
@@ -1773,241 +1996,73 @@ export default function Account() {
               )}
 
               {showAddressModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-                  <div className="relative w-full max-w-3xl rounded-2xl border border-slate-700/60 bg-slate-950/95 p-6 shadow-2xl backdrop-blur-xl">
-                    <button
-                      type="button"
-                      onClick={closeAddressModal}
-                      className="absolute right-4 top-4 rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white"
-                    >
-                      <X className="h-5 w-5" />
-                    </button>
+                <Modal onClose={closeAddressModal} maxWidth="max-w-3xl">
+                  <h3 className="mb-6 pr-10 text-2xl font-bold text-white">{editingAddressId ? "Editează adresă" : "Adaugă adresă nouă"}</h3>
+                  {addressesError && <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{addressesError}</div>}
+                  {addressSaveSuccess && <div className="mb-4 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">{addressSaveSuccess}</div>}
 
-                    <h3 className="mb-6 text-2xl font-bold text-white">
-                      {editingAddressId
-                        ? "Editează adresă"
-                        : "Adaugă adresă nouă"}
-                    </h3>
-
-                    {addressesError && (
-                      <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                        {addressesError}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {[
+                      ["label", "Etichetă", "Acasă / Serviciu"],
+                      ["recipientName", "Destinatar", "Nume destinatar"],
+                      ["phone", "Telefon", "07xx xxx xxx"],
+                      ["country", "Țară", "RO"],
+                      ["county", "Județ", ""],
+                      ["city", "Oraș", ""],
+                    ].map(([field, label, placeholder]) => (
+                      <div key={field}>
+                        <label className="mb-2 block text-sm font-medium text-slate-400">{label}</label>
+                        <input type="text" value={addressForm[field]} onChange={(e) => handleAddressFieldChange(field, e.target.value)} placeholder={placeholder} className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:outline-none" />
                       </div>
-                    )}
+                    ))}
 
-                    {addressSaveSuccess && (
-                      <div className="mb-4 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">
-                        {addressSaveSuccess}
-                      </div>
-                    )}
-
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div>
-                        <label className="mb-2 block text-sm font-medium text-slate-400">
-                          Etichetă
-                        </label>
-                        <input
-                          type="text"
-                          value={addressForm.label}
-                          onChange={(e) =>
-                            handleAddressFieldChange("label", e.target.value)
-                          }
-                          placeholder="Acasă / Serviciu"
-                          className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="mb-2 block text-sm font-medium text-slate-400">
-                          Destinatar
-                        </label>
-                        <input
-                          type="text"
-                          value={addressForm.recipientName}
-                          onChange={(e) =>
-                            handleAddressFieldChange("recipientName", e.target.value)
-                          }
-                          placeholder="Nume destinatar"
-                          className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="mb-2 block text-sm font-medium text-slate-400">
-                          Telefon
-                        </label>
-                        <input
-                          type="text"
-                          value={addressForm.phone}
-                          onChange={(e) =>
-                            handleAddressFieldChange("phone", e.target.value)
-                          }
-                          placeholder="07xx xxx xxx"
-                          className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="mb-2 block text-sm font-medium text-slate-400">
-                          Țară
-                        </label>
-                        <input
-                          type="text"
-                          value={addressForm.country}
-                          onChange={(e) =>
-                            handleAddressFieldChange("country", e.target.value)
-                          }
-                          className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="mb-2 block text-sm font-medium text-slate-400">
-                          Județ
-                        </label>
-                        <input
-                          type="text"
-                          value={addressForm.county}
-                          onChange={(e) =>
-                            handleAddressFieldChange("county", e.target.value)
-                          }
-                          className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="mb-2 block text-sm font-medium text-slate-400">
-                          Oraș
-                        </label>
-                        <input
-                          type="text"
-                          value={addressForm.city}
-                          onChange={(e) =>
-                            handleAddressFieldChange("city", e.target.value)
-                          }
-                          className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:outline-none"
-                        />
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="mb-2 block text-sm font-medium text-slate-400">
-                          Stradă / adresă completă
-                        </label>
-                        <input
-                          type="text"
-                          value={addressForm.street}
-                          onChange={(e) =>
-                            handleAddressFieldChange("street", e.target.value)
-                          }
-                          className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="mb-2 block text-sm font-medium text-slate-400">
-                          Cod poștal
-                        </label>
-                        <input
-                          type="text"
-                          value={addressForm.postalCode}
-                          onChange={(e) =>
-                            handleAddressFieldChange("postalCode", e.target.value)
-                          }
-                          className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:outline-none"
-                        />
-                      </div>
-
-                      <div className="flex items-center gap-3 pt-8">
-                        <input
-                          id="isDefaultAddress"
-                          type="checkbox"
-                          checked={addressForm.isDefault}
-                          onChange={(e) =>
-                            handleAddressFieldChange("isDefault", e.target.checked)
-                          }
-                          className="h-5 w-5 rounded border-slate-600 bg-slate-800 text-cyan-500"
-                        />
-                        <label
-                          htmlFor="isDefaultAddress"
-                          className="text-sm text-slate-300"
-                        >
-                          Setează ca adresă implicită
-                        </label>
-                      </div>
+                    <div className="md:col-span-2">
+                      <label className="mb-2 block text-sm font-medium text-slate-400">Stradă / adresă completă</label>
+                      <input type="text" value={addressForm.street} onChange={(e) => handleAddressFieldChange("street", e.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:outline-none" />
                     </div>
 
-                    <div className="mt-6 flex justify-end gap-3">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={closeAddressModal}
-                      >
-                        <X className="mr-2 h-4 w-4" />
-                        Anulează
-                      </Button>
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-400">Cod poștal</label>
+                      <input type="text" value={addressForm.postalCode} onChange={(e) => handleAddressFieldChange("postalCode", e.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:outline-none" />
+                    </div>
 
-                      <Button
-                        type="button"
-                        onClick={handleSaveAddress}
-                        disabled={addressSaveLoading}
-                        className="gap-2"
-                      >
-                        <Check className="h-4 w-4" />
-                        {addressSaveLoading ? "Se salvează..." : "Salvează"}
-                      </Button>
+                    <div className="flex items-center gap-3 pt-0 md:pt-8">
+                      <input id="isDefaultAddress" type="checkbox" checked={addressForm.isDefault} onChange={(e) => handleAddressFieldChange("isDefault", e.target.checked)} className="h-5 w-5 rounded border-slate-600 bg-slate-800 text-cyan-500" />
+                      <label htmlFor="isDefaultAddress" className="text-sm text-slate-300">Setează ca adresă implicită</label>
                     </div>
                   </div>
-                </div>
+
+                  <div className="mt-6 grid gap-3 sm:flex sm:justify-end">
+                    <Button type="button" variant="outline" onClick={closeAddressModal} className="w-full sm:w-auto"><X className="mr-2 h-4 w-4" />Anulează</Button>
+                    <Button type="button" onClick={handleSaveAddress} disabled={addressSaveLoading} className="w-full gap-2 sm:w-auto"><Check className="h-4 w-4" />{addressSaveLoading ? "Se salvează..." : "Salvează"}</Button>
+                  </div>
+                </Modal>
               )}
             </div>
           )}
 
           {tab === "settings" && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-white">
-                Setări și securitate
-              </h2>
+              <h2 className="text-2xl font-bold text-white">Setări și securitate</h2>
 
-              <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm">
+              <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5 backdrop-blur-sm sm:p-6">
                 <div className="mb-4 flex items-center gap-3">
                   <Shield className="h-5 w-5 text-cyan-400" />
                   <h3 className="font-semibold text-white">Securitate</h3>
                 </div>
 
                 <div className="space-y-3">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    type="button"
-                    onClick={openChangePasswordModal}
-                  >
-                    <Lock className="mr-2 h-4 w-4" />
-                    Schimbă parola
+                  <Button variant="outline" className="w-full justify-start" type="button" onClick={openChangePasswordModal}>
+                    <Lock className="mr-2 h-4 w-4" />Schimbă parola
                   </Button>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-6">
-                <h3 className="mb-4 font-semibold text-red-400">
-                  Zona periculoasă
-                </h3>
+              <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-5 sm:p-6">
+                <h3 className="mb-4 font-semibold text-red-400">Zona periculoasă</h3>
                 <div className="space-y-3">
-                  <button
-                    type="button"
-                    onClick={logout}
-                    className="flex w-full items-center justify-start rounded-lg border border-red-500/30 px-4 py-2.5 text-sm font-semibold text-red-400 transition hover:border-red-500 hover:bg-red-500/10"
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Deconectează-te
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={openDeleteAccountModal}
-                    className="flex w-full items-center justify-start rounded-lg border border-red-500/30 px-4 py-2.5 text-sm font-semibold text-red-400 transition hover:border-red-500 hover:bg-red-500/10"
-                  >
-                    Șterge contul
-                  </button>
+                  <button type="button" onClick={logout} className="flex w-full items-center justify-start rounded-lg border border-red-500/30 px-4 py-2.5 text-sm font-semibold text-red-400 transition hover:border-red-500 hover:bg-red-500/10"><LogOut className="mr-2 h-4 w-4" />Deconectează-te</button>
+                  <button type="button" onClick={openDeleteAccountModal} className="flex w-full items-center justify-start rounded-lg border border-red-500/30 px-4 py-2.5 text-sm font-semibold text-red-400 transition hover:border-red-500 hover:bg-red-500/10">Șterge contul</button>
                 </div>
               </div>
             </div>
@@ -2015,268 +2070,513 @@ export default function Account() {
         </motion.div>
       </div>
 
-      {showChangePasswordModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="relative w-full max-w-2xl rounded-2xl border border-slate-700/60 bg-slate-950/95 p-6 shadow-2xl backdrop-blur-xl">
+      {showBuildEditModal && selectedBuildForEdit && (
+        <Modal
+          onClose={closeEditBuildModal}
+          maxWidth="max-w-5xl"
+          disableScroll={buildPickerOpen}
+        >
+          <div className="mb-6 flex flex-col gap-4 border-b border-slate-700/50 pb-6 md:flex-row md:items-start md:justify-between">
+            <div className="min-w-0 pr-10">
+              <div className="mb-2 flex items-center gap-3">
+                <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 ring-1 ring-cyan-500/30">
+                  <Cpu className="h-5 w-5 text-cyan-400" />
+                </div>
+
+                <div className="min-w-0">
+                  <h3 className="break-words text-2xl font-bold text-white">
+                    Editează configurația
+                  </h3>
+                  <p className="text-sm text-slate-400">
+                    Poți modifica numele build-ului și fiecare componentă salvată.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-4 py-3 text-center">
+              <div className="flex items-baseline justify-center gap-2 md:justify-center">
+                <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-3xl font-bold text-transparent">
+                  {formatRon(
+                    Math.round(
+                      buildDraftItems.length
+                        ? buildEditGrossTotal
+                        : Number(selectedBuildForEdit.totalGrossRon) ||
+                            Number(selectedBuildForEdit.totalNetRon) ||
+                            0
+                    )
+                  )}
+                </span>
+                <span className="text-sm font-semibold text-slate-400">
+                  RON
+                </span>
+              </div>
+              <div className="text-xs text-slate-500">
+                Valoarea configurației
+              </div>
+            </div>
+          </div>
+
+          {buildEditError && (
+            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+              {buildEditError}
+            </div>
+          )}
+
+          {buildEditSuccess && (
+            <div className="mb-4 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">
+              {buildEditSuccess}
+            </div>
+          )}
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="space-y-6 lg:col-span-2">
+              <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+                <label className="mb-2 block text-sm font-medium text-slate-400">
+                  Nume configurație
+                </label>
+                <input
+                  type="text"
+                  value={buildEditName}
+                  onChange={(e) => {
+                    setBuildEditName(e.target.value);
+                    setBuildEditError("");
+                    setBuildEditSuccess("");
+                  }}
+                  placeholder="Ex: Build gaming 1440p"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white placeholder-slate-500 transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                />
+              </div>
+
+              <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+                <div className="mb-4 flex items-center justify-between gap-4">
+                  <div>
+                    <h4 className="font-semibold text-white">
+                      Componente salvate
+                    </h4>
+                    <p className="text-sm text-slate-400">
+                      {buildDraftItems.length} componente în configurație
+                    </p>
+                  </div>
+
+                  {!selectedBuildForEdit.isCompatible && (
+                    <Badge className="bg-red-500/20 text-red-300">
+                      Incompatibil
+                    </Badge>
+                  )}
+                </div>
+
+                {buildDraftItems.length > 0 ? (
+                  <div className="space-y-3">
+                    {buildDraftItems.map((component) => (
+                      <div
+                        key={component.id || component.slotKey}
+                        className="rounded-lg border border-slate-700/40 bg-slate-800/30 p-4"
+                      >
+                        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                          <div className="min-w-0 flex-1">
+                            <div className="mb-1 flex flex-wrap items-center gap-2">
+                              <Badge className="border border-cyan-500/30 bg-cyan-500/10 text-cyan-400">
+                                {component.slotLabel || "Componentă"}
+                              </Badge>
+                              <span className="text-xs text-slate-500">
+                                {component.brand || "Brand"}
+                              </span>
+                            </div>
+
+                            <p className="break-words font-medium text-white">
+                              {component.productName || "Produs"}
+                            </p>
+
+                            {component.category && (
+                              <p className="mt-1 text-xs text-slate-500">
+                                {component.category}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-[minmax(150px,1fr)_auto] xl:min-w-[300px]">
+                            <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-3 py-2 text-center">
+                              <div className="flex items-baseline justify-center gap-2 sm:justify-center">
+                                <span className="font-bold text-cyan-400">
+                                  {formatRon(component.unitPriceRon)}
+                                </span>
+                                <span className="text-xs text-slate-400">
+                                  RON
+                                </span>
+                              </div>
+                              {Number(component.quantity || 1) > 1 && (
+                                <div className="text-xs text-slate-500">
+                                  x{component.quantity}
+                                </div>
+                              )}
+                            </div>
+
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-full gap-2 sm:w-auto"
+                              onClick={() => openBuildPicker(component)}
+                            >
+                              <Edit className="h-4 w-4" />
+                              Schimbă
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-slate-700/40 bg-slate-800/30 p-4 text-sm text-slate-400">
+                    Configurația nu are componente salvate.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+                <h4 className="mb-4 font-semibold text-white">
+                  Detalii build
+                </h4>
+
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-slate-400">Creat</span>
+                    <span className="text-right text-slate-200">
+                      {formatDateRo(selectedBuildForEdit.createdAt)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-slate-400">Compatibilitate</span>
+                    <span
+                      className={
+                        activeBuildCompatibility.isCompatible
+                          ? "text-green-400"
+                          : "text-red-400"
+                      }
+                    >
+                      {activeBuildCompatibility.isCompatible
+                        ? "Compatibil"
+                        : "Incompatibil"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-slate-400">Consum estimat</span>
+                    <span className="text-slate-200">
+                      {activeBuildCompatibility.estimatedSystemPowerW || 0} W
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-slate-400">PSU recomandat</span>
+                    <span className="text-cyan-400">
+                      {activeBuildCompatibility.recommendedPsuW || 0} W
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-sm text-slate-300">
+                {buildEditCompatibilityLoading ? (
+                  <p className="text-cyan-300">
+                    Se verifică compatibilitatea...
+                  </p>
+                ) : activeBuildCompatibility.isCompatible ? (
+                  <p className="text-green-300">
+                    Configurația curentă este compatibilă.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="font-semibold text-red-300">
+                      Configurația are incompatibilități:
+                    </p>
+
+                    {activeBuildCompatibility.errors.length > 0 && (
+                      <ul className="space-y-2">
+                        {activeBuildCompatibility.errors.map((error, idx) => (
+                          <li
+                            key={`build-error-${idx}`}
+                            className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-red-200"
+                          >
+                            {error}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+
+                {!buildEditCompatibilityLoading &&
+                  activeBuildCompatibility.warnings.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <p className="font-semibold text-orange-300">
+                        Avertismente:
+                      </p>
+                      {activeBuildCompatibility.warnings.map((warning, idx) => (
+                        <div
+                          key={`build-warning-${idx}`}
+                          className="rounded-lg border border-orange-500/20 bg-orange-500/10 px-3 py-2 text-orange-200"
+                        >
+                          {warning}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+              </div>
+
+              <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-sm text-slate-300">
+                Pentru fiecare rubrică apasă <span className="font-semibold text-cyan-300">Schimbă</span>.
+                Lista arată toate produsele din aceeași categorie; compatibilitatea se verifică după selecție.
+              </div>
+
+              <div className="grid gap-3">
+                <Button
+                  type="button"
+                  onClick={handleSaveBuildEdit}
+                  disabled={buildEditSaveLoading}
+                  className="w-full gap-2"
+                >
+                  <Check className="h-4 w-4" />
+                  {buildEditSaveLoading ? "Se salvează..." : "Salvează modificările"}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => buildEditSnapshot && addBuildToCart(buildEditSnapshot)}
+                  disabled={
+                    !buildEditSnapshot ||
+                    buildCartLoadingId === selectedBuildForEdit.id
+                  }
+                  className="w-full gap-2"
+                >
+                  <ShoppingCart className="h-4 w-4" />
+                  {buildCartLoadingId === selectedBuildForEdit.id
+                    ? "Se adaugă..."
+                    : "Adaugă în coș"}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate("/configurator")}
+                  className="w-full gap-2"
+                >
+                  <Cpu className="h-4 w-4" />
+                  Deschide Configurator
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeEditBuildModal}
+                  className="w-full"
+                >
+                  Închide
+                </Button>
+              </div>
+            </div>
+          </div>
+
+        </Modal>
+      )}
+
+      {buildPickerOpen && buildPickerSlot && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 px-4 py-6">
+          <div className="relative max-h-[88vh] w-full max-w-3xl overflow-y-auto overscroll-contain rounded-2xl border border-slate-700/60 bg-slate-950 p-5 shadow-2xl sm:p-6">
             <button
               type="button"
-              onClick={closeChangePasswordModal}
+              onClick={closeBuildPicker}
               className="absolute right-4 top-4 rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white"
             >
               <X className="h-5 w-5" />
             </button>
 
-            <div className="mb-6">
-              <h3 className="text-2xl font-bold text-white">Schimbă parola</h3>
+            <div className="mb-5 pr-10">
+              <h4 className="text-xl font-bold text-white">
+                Schimbă {buildPickerSlot.slotLabel || "componenta"}
+              </h4>
               <p className="mt-1 text-sm text-slate-400">
-                Actualizează parola contului tău în siguranță.
+                Alege un produs din aceeași rubrică.
               </p>
             </div>
 
-            {changePasswordError && (
+            <div className="mb-4 flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-3">
+              <Search className="h-5 w-5 flex-shrink-0 text-slate-500" />
+              <input
+                value={buildPickerQuery}
+                onChange={(e) => setBuildPickerQuery(e.target.value)}
+                placeholder="Caută după nume, brand sau categorie..."
+                className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
+              />
+            </div>
+
+            {buildPickerError && (
               <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                {changePasswordError}
+                {buildPickerError}
               </div>
             )}
 
-            {changePasswordSuccess && (
-              <div className="mb-4 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">
-                {changePasswordSuccess}
+            {buildPickerLoading ? (
+              <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 text-slate-300">
+                Se încarcă produsele...
+              </div>
+            ) : filteredBuildPickerProducts.length > 0 ? (
+              <div className="space-y-3">
+                {filteredBuildPickerProducts.map((product) => (
+                  <div
+                    key={product.id}
+                    className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-4 transition hover:border-cyan-500/40"
+                  >
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 flex flex-wrap items-center gap-2">
+                          <Badge className="border border-cyan-500/30 bg-cyan-500/10 text-cyan-400">
+                            {product.category || buildPickerSlot.category || "Categorie"}
+                          </Badge>
+                          <span className="text-xs text-slate-500">
+                            {product.brand || "Brand"}
+                          </span>
+                        </div>
+
+                        <p className="break-words font-semibold text-white">
+                          {product.name}
+                        </p>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          Stoc:{" "}
+                          <span
+                            className={
+                              Number(product.stock || 0) > 0
+                                ? "text-green-400"
+                                : "text-red-400"
+                            }
+                          >
+                            {Number(product.stock || 0)}
+                          </span>
+                        </p>
+                      </div>
+
+                      <div className="grid gap-3 sm:min-w-[220px]">
+                        <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-3 py-2 text-center">
+                          <div className="flex items-baseline justify-center gap-2 sm:justify-center">
+                            <span className="text-lg font-bold text-cyan-400">
+                              {formatRon(product.priceRon)}
+                            </span>
+                            <span className="text-xs text-slate-400">
+                              RON
+                            </span>
+                          </div>
+                        </div>
+
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={Number(product.stock || 0) <= 0}
+                          onClick={() => selectBuildReplacementProduct(product)}
+                          className="w-full"
+                        >
+                          Selectează
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 text-slate-300">
+                Nu am găsit produse pentru această rubrică.
               </div>
             )}
-
-            <div className="space-y-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-400">
-                  Parola curentă
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
-                  <input
-                    type={showCurrentPassword ? "text" : "password"}
-                    value={changePasswordForm.currentPassword}
-                    onChange={(e) =>
-                      handleChangePasswordField("currentPassword", e.target.value)
-                    }
-                    placeholder="••••••••"
-                    className="w-full rounded-lg border border-slate-700 bg-slate-800 py-3 pl-11 pr-11 text-white placeholder-slate-500 transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrentPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                  >
-                    {showCurrentPassword ? (
-                      <EyeOff className="h-5 w-5" />
-                    ) : (
-                      <Eye className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-400">
-                  Parolă nouă
-                </label>
-                <div className="relative">
-                  <KeyRound className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
-                  <input
-                    type={showNewPassword ? "text" : "password"}
-                    value={changePasswordForm.newPassword}
-                    onChange={(e) =>
-                      handleChangePasswordField("newPassword", e.target.value)
-                    }
-                    placeholder="••••••••"
-                    className="w-full rounded-lg border border-slate-700 bg-slate-800 py-3 pl-11 pr-11 text-white placeholder-slate-500 transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNewPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                  >
-                    {showNewPassword ? (
-                      <EyeOff className="h-5 w-5" />
-                    ) : (
-                      <Eye className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
-                <p className="mt-2 text-xs text-slate-500">
-                  Minim 8 caractere, o literă mare și un număr
-                </p>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-400">
-                  Confirmă parola nouă
-                </label>
-                <div className="relative">
-                  <KeyRound className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={changePasswordForm.confirmPassword}
-                    onChange={(e) =>
-                      handleChangePasswordField("confirmPassword", e.target.value)
-                    }
-                    placeholder="••••••••"
-                    className="w-full rounded-lg border border-slate-700 bg-slate-800 py-3 pl-11 pr-11 text-white placeholder-slate-500 transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-5 w-5" />
-                    ) : (
-                      <Eye className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={closeChangePasswordModal}
-              >
-                <X className="mr-2 h-4 w-4" />
-                Anulează
-              </Button>
-
-              <Button
-                type="button"
-                onClick={handleChangePasswordSubmit}
-                disabled={changePasswordLoading}
-                className="gap-2"
-              >
-                <Check className="h-4 w-4" />
-                {changePasswordLoading ? "Se salvează..." : "Salvează parola"}
-              </Button>
-            </div>
           </div>
         </div>
       )}
 
-      {showDeleteAccountModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="relative w-full max-w-2xl rounded-2xl border border-red-500/20 bg-slate-950/95 p-6 shadow-2xl backdrop-blur-xl">
-            <button
-              type="button"
-              onClick={closeDeleteAccountModal}
-              className="absolute right-4 top-4 rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white"
-            >
-              <X className="h-5 w-5" />
-            </button>
 
-            <div className="mb-6 flex items-start gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-500/10 ring-1 ring-red-500/20">
-                <AlertTriangle className="h-6 w-6 text-red-400" />
-              </div>
+      {showChangePasswordModal && (
+        <Modal onClose={closeChangePasswordModal}>
+          <div className="mb-6 pr-10">
+            <h3 className="text-2xl font-bold text-white">Schimbă parola</h3>
+            <p className="mt-1 text-sm text-slate-400">Actualizează parola contului tău în siguranță.</p>
+          </div>
 
-              <div>
-                <h3 className="text-2xl font-bold text-white">
-                  Șterge contul definitiv
-                </h3>
-                <p className="mt-1 text-sm text-slate-400">
-                  Această acțiune este permanentă și nu poate fi anulată.
-                </p>
-              </div>
-            </div>
+          {changePasswordError && <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{changePasswordError}</div>}
+          {changePasswordSuccess && <div className="mb-4 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-200">{changePasswordSuccess}</div>}
 
-            {deleteAccountError && (
-              <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                {deleteAccountError}
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-slate-300">
-                <p className="mb-2 font-medium text-red-300">
-                  Ce se va întâmpla:
-                </p>
-                <ul className="space-y-1 text-slate-300">
-                  <li>• profilul tău va fi șters</li>
-                  <li>• adresele salvate vor fi eliminate</li>
-                  <li>• build-urile și wishlist-urile tale vor fi eliminate</li>
-                  <li>• nu vei mai putea accesa contul</li>
-                </ul>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-400">
-                  Scrie <span className="font-bold text-red-400">STERGE</span> pentru confirmare
-                </label>
-                <input
-                  type="text"
-                  value={deleteAccountForm.confirmationText}
-                  onChange={(e) =>
-                    handleDeleteAccountField("confirmationText", e.target.value)
-                  }
-                  placeholder="STERGE"
-                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white placeholder-slate-500 transition focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-400">
-                  Parola curentă
-                  <span className="ml-1 text-xs text-slate-500">
-                    (obligatorie pentru conturile cu parolă locală)
-                  </span>
-                </label>
+          <div className="space-y-4">
+            {[
+              ["currentPassword", "Parola curentă", showCurrentPassword, setShowCurrentPassword, Lock],
+              ["newPassword", "Parolă nouă", showNewPassword, setShowNewPassword, KeyRound],
+              ["confirmPassword", "Confirmă parola nouă", showConfirmPassword, setShowConfirmPassword, KeyRound],
+            ].map(([field, label, shown, setShown, Icon]) => (
+              <div key={field}>
+                <label className="mb-2 block text-sm font-medium text-slate-400">{label}</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
-                  <input
-                    type={showDeletePassword ? "text" : "password"}
-                    value={deleteAccountForm.currentPassword}
-                    onChange={(e) =>
-                      handleDeleteAccountField("currentPassword", e.target.value)
-                    }
-                    placeholder="••••••••"
-                    className="w-full rounded-lg border border-slate-700 bg-slate-800 py-3 pl-11 pr-11 text-white placeholder-slate-500 transition focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowDeletePassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                  >
-                    {showDeletePassword ? (
-                      <EyeOff className="h-5 w-5" />
-                    ) : (
-                      <Eye className="h-5 w-5" />
-                    )}
+                  <Icon className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                  <input type={shown ? "text" : "password"} value={changePasswordForm[field]} onChange={(e) => handleChangePasswordField(field, e.target.value)} placeholder="••••••••" className="w-full rounded-lg border border-slate-700 bg-slate-800 py-3 pl-11 pr-11 text-white placeholder-slate-500 transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20" />
+                  <button type="button" onClick={() => setShown((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                    {shown ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
+                {field === "newPassword" && <p className="mt-2 text-xs text-slate-500">Minim 8 caractere, o literă mare și un număr</p>}
               </div>
-            </div>
+            ))}
+          </div>
 
-            <div className="mt-6 flex justify-end gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={closeDeleteAccountModal}
-              >
-                <X className="mr-2 h-4 w-4" />
-                Anulează
-              </Button>
+          <div className="mt-6 grid gap-3 sm:flex sm:justify-end">
+            <Button type="button" variant="outline" onClick={closeChangePasswordModal} className="w-full sm:w-auto"><X className="mr-2 h-4 w-4" />Anulează</Button>
+            <Button type="button" onClick={handleChangePasswordSubmit} disabled={changePasswordLoading} className="w-full gap-2 sm:w-auto"><Check className="h-4 w-4" />{changePasswordLoading ? "Se salvează..." : "Salvează parola"}</Button>
+          </div>
+        </Modal>
+      )}
 
-              <Button
-                type="button"
-                variant="danger"
-                onClick={handleDeleteAccountSubmit}
-                disabled={deleteAccountLoading}
-                className="gap-2"
-              >
-                <AlertTriangle className="h-4 w-4" />
-                {deleteAccountLoading ? "Se șterge..." : "Șterge definitiv"}
-              </Button>
+      {showDeleteAccountModal && (
+        <Modal onClose={closeDeleteAccountModal}>
+          <div className="mb-6 flex items-start gap-4 pr-10">
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-red-500/10 ring-1 ring-red-500/20"><AlertTriangle className="h-6 w-6 text-red-400" /></div>
+            <div>
+              <h3 className="text-2xl font-bold text-white">Șterge contul definitiv</h3>
+              <p className="mt-1 text-sm text-slate-400">Această acțiune este permanentă și nu poate fi anulată.</p>
             </div>
           </div>
-        </div>
+
+          {deleteAccountError && <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{deleteAccountError}</div>}
+
+          <div className="space-y-4">
+            <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-slate-300">
+              <p className="mb-2 font-medium text-red-300">Ce se va întâmpla:</p>
+              <ul className="space-y-1 text-slate-300">
+                <li>• profilul tău va fi șters</li>
+                <li>• adresele salvate vor fi eliminate</li>
+                <li>• build-urile și wishlist-urile tale vor fi eliminate</li>
+                <li>• nu vei mai putea accesa contul</li>
+              </ul>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-400">Scrie <span className="font-bold text-red-400">STERGE</span> pentru confirmare</label>
+              <input type="text" value={deleteAccountForm.confirmationText} onChange={(e) => handleDeleteAccountField("confirmationText", e.target.value)} placeholder="STERGE" className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white placeholder-slate-500 transition focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20" />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-400">Parola curentă <span className="ml-1 text-xs text-slate-500">(obligatorie pentru conturile cu parolă locală)</span></label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                <input type={showDeletePassword ? "text" : "password"} value={deleteAccountForm.currentPassword} onChange={(e) => handleDeleteAccountField("currentPassword", e.target.value)} placeholder="••••••••" className="w-full rounded-lg border border-slate-700 bg-slate-800 py-3 pl-11 pr-11 text-white placeholder-slate-500 transition focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20" />
+                <button type="button" onClick={() => setShowDeletePassword((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">{showDeletePassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:flex sm:justify-end">
+            <Button type="button" variant="outline" onClick={closeDeleteAccountModal} className="w-full sm:w-auto"><X className="mr-2 h-4 w-4" />Anulează</Button>
+            <Button type="button" variant="danger" onClick={handleDeleteAccountSubmit} disabled={deleteAccountLoading} className="w-full gap-2 sm:w-auto"><AlertTriangle className="h-4 w-4" />{deleteAccountLoading ? "Se șterge..." : "Șterge definitiv"}</Button>
+          </div>
+        </Modal>
       )}
     </div>
   );

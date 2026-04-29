@@ -207,7 +207,6 @@ function normalizeDate(dateValue) {
   });
 }
 
-
 function hasAdminRole(source) {
   const directRoles = Array.isArray(source?.roles) ? source.roles : [];
   if (directRoles.some((role) => String(role).trim().toLowerCase() === "admin")) {
@@ -256,6 +255,7 @@ export default function ProductDetail() {
 
   const [activeTab, setActiveTab] = useState("description");
   const [selectedImage, setSelectedImage] = useState(0);
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
 
   const [loading, setLoading] = useState(true);
@@ -291,7 +291,6 @@ export default function ProductDetail() {
   });
   const [answerError, setAnswerError] = useState("");
   const [answerSubmitting, setAnswerSubmitting] = useState(false);
-
 
   const fetchProduct = async () => {
     if (!id) return;
@@ -560,7 +559,6 @@ export default function ProductDetail() {
     setShowAnswerModal(true);
   };
 
-
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
     setReviewError("");
@@ -644,7 +642,6 @@ export default function ProductDetail() {
       setQuestionSubmitting(false);
     }
   };
-
 
   const handleAnswerSubmit = async (e) => {
     e.preventDefault();
@@ -788,9 +785,9 @@ export default function ProductDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen px-6 py-8">
+      <div className="min-h-screen px-4 py-8 sm:px-6">
         <div className="mx-auto max-w-7xl">
-          <div className="rounded-2xl border border-slate-700/50 bg-slate-900/40 p-8 text-slate-300">
+          <div className="rounded-2xl border border-slate-700/50 bg-slate-900/40 p-6 text-slate-300 sm:p-8">
             Se încarcă produsul...
           </div>
         </div>
@@ -800,8 +797,8 @@ export default function ProductDetail() {
 
   if (!product) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-6">
-        <div className="rounded-2xl border border-slate-700/50 bg-slate-900/50 p-10 text-center backdrop-blur-sm">
+      <div className="flex min-h-screen items-center justify-center px-4 sm:px-6">
+        <div className="rounded-2xl border border-slate-700/50 bg-slate-900/50 p-6 text-center backdrop-blur-sm sm:p-10">
           <h1 className="mb-4 text-2xl font-bold text-white">Produs negăsit</h1>
           <p className="mb-6 text-slate-400">
             {errorMsg || "Acest produs nu există."}
@@ -822,7 +819,7 @@ export default function ProductDetail() {
     resolveProductImage(getPrimaryRawImageValue(product));
 
   return (
-    <div className="min-h-screen px-6 py-8">
+    <div className="min-h-screen overflow-x-hidden px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-7xl">
         {toast && (
           <div className="mb-6 rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-200">
@@ -833,48 +830,55 @@ export default function ProductDetail() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 flex flex-wrap items-center gap-2 text-sm text-slate-400"
+          className="mb-5 flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap text-xs text-slate-400 sm:mb-6 sm:gap-2 sm:text-sm"
         >
-          <Link to="/" className="hover:text-cyan-400">
+          <Link to="/" className="flex-shrink-0 hover:text-cyan-400">
             Home
           </Link>
-          <ChevronRight className="h-4 w-4" />
-          <Link to="/components" className="hover:text-cyan-400">
+          <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 sm:h-4 sm:w-4" />
+          <Link to="/components" className="flex-shrink-0 hover:text-cyan-400">
             Componente
           </Link>
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 sm:h-4 sm:w-4" />
           <Link
             to={`/components/${encodeURIComponent(product.category || "Toate")}`}
-            className="hover:text-cyan-400"
+            className="max-w-[120px] flex-shrink-0 truncate hover:text-cyan-400 sm:max-w-none"
           >
             {product.category || "Categorie"}
           </Link>
-          <ChevronRight className="h-4 w-4" />
-          <span className="text-white">{product.name}</span>
+          <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 sm:h-4 sm:w-4" />
+          <span className="min-w-0 truncate text-white">{product.name}</span>
         </motion.div>
 
-        <div className="mb-12 grid gap-8 lg:grid-cols-2">
+        <div className="mb-10 grid gap-6 lg:mb-12 lg:grid-cols-2 lg:gap-8">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="space-y-4"
+            className="min-w-0 space-y-4"
           >
-            <div className="overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-900/50 p-8 backdrop-blur-sm">
+            <button
+              type="button"
+              onClick={() => setImagePreviewOpen(true)}
+              className="group relative w-full overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-900/50 p-4 text-left backdrop-blur-sm transition hover:border-cyan-500/40 sm:p-8"
+              title="Mărește imaginea"
+            >
               <ImageWithFallback
                 src={currentImage}
                 alt={product.name}
-                className="h-96 w-full object-contain"
+                className="h-[280px] w-full object-contain transition duration-300 group-hover:scale-[1.02] sm:h-96"
               />
-            </div>
+
+            
+            </button>
 
             {images.length > 1 && (
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-3 sm:grid-cols-3 sm:gap-4">
                 {images.map((img, idx) => (
                   <button
                     key={`${img.key}-${idx}`}
                     type="button"
                     onClick={() => setSelectedImage(idx)}
-                    className={`overflow-hidden rounded-xl border-2 transition-all ${
+                    className={`overflow-hidden rounded-xl border-2 bg-slate-900/40 transition-all ${
                       selectedImage === idx
                         ? "border-cyan-500 ring-2 ring-cyan-500/30"
                         : "border-slate-700/50 hover:border-slate-600"
@@ -883,7 +887,7 @@ export default function ProductDetail() {
                     <ImageWithFallback
                       src={img.src}
                       alt={img.alt}
-                      className="h-24 w-full object-cover"
+                      className="h-20 w-full object-contain p-2 sm:h-24"
                     />
                   </button>
                 ))}
@@ -894,9 +898,9 @@ export default function ProductDetail() {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="space-y-6"
+            className="min-w-0 space-y-5 sm:space-y-6"
           >
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               {product.brand && (
                 <Badge className="bg-cyan-500/20 text-cyan-400">
                   {product.brand}
@@ -920,17 +924,17 @@ export default function ProductDetail() {
               )}
             </div>
 
-            <h1 className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-4xl font-bold text-transparent">
+            <h1 className="break-words bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-3xl font-bold leading-tight text-transparent sm:text-4xl">
               {product.name}
             </h1>
 
             {displayReviewCount > 0 ? (
-              <div className="flex flex-wrap items-center gap-4">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                 <div className="flex items-center gap-1">
                   {[...Array(5)].map((_, i) => (
                     <Star
                       key={i}
-                      className={`h-5 w-5 ${
+                      className={`h-4 w-4 sm:h-5 sm:w-5 ${
                         i < Math.floor(displayRating)
                           ? "fill-yellow-400 text-yellow-400"
                           : "text-slate-600"
@@ -939,11 +943,11 @@ export default function ProductDetail() {
                   ))}
                 </div>
 
-                <span className="text-lg font-semibold text-white">
+                <span className="text-base font-semibold text-white sm:text-lg">
                   {displayRating.toFixed(1)}
                 </span>
 
-                <span className="text-slate-400">
+                <span className="text-sm text-slate-400 sm:text-base">
                   ({displayReviewCount} review-uri)
                 </span>
               </div>
@@ -953,20 +957,22 @@ export default function ProductDetail() {
               </div>
             )}
 
-            <p className="text-lg text-slate-300">
+            <p className="text-base leading-relaxed text-slate-300 sm:text-lg">
               {product.shortDescription || "Fără descriere scurtă momentan."}
             </p>
 
-            <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-6">
-              <div className="mb-2 flex flex-wrap items-baseline gap-3">
-                <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-5xl font-bold text-transparent">
-                  {formatRon(grossFromNet(product.priceRon))}
-                </span>
-                <span className="text-2xl text-cyan-400">RON</span>
-              </div>
+            <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-5 text-center sm:p-6 sm:text-left">
+              <div className="flex flex-col items-center justify-center gap-1 sm:flex-row sm:flex-wrap sm:items-baseline sm:justify-start sm:gap-3">
+                <div className="flex flex-wrap items-baseline justify-center gap-2 sm:justify-start">
+                  <span className="break-words bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-4xl font-bold leading-none text-transparent sm:text-5xl">
+                    {formatRon(grossFromNet(product.priceRon))}
+                  </span>
+                  <span className="text-xl text-cyan-400 sm:text-2xl">RON</span>
+                </div>
 
-              <div className="text-sm text-slate-400">
-                ({formatRon(product.priceRon)} RON fără TVA)
+                <span className="text-sm text-slate-400">
+                  ({formatRon(product.priceRon)} RON fără TVA)
+                </span>
               </div>
             </div>
 
@@ -990,10 +996,10 @@ export default function ProductDetail() {
             )}
 
             <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <span className="text-slate-400">Cantitate:</span>
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-700/50 bg-slate-900/40 p-4">
+                <span className="text-sm font-medium text-slate-400">Cantitate</span>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-shrink-0 items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -1002,7 +1008,7 @@ export default function ProductDetail() {
                     -
                   </button>
 
-                  <span className="w-12 text-center text-lg font-semibold text-white">
+                  <span className="flex h-10 w-12 items-center justify-center rounded-lg border border-slate-700 bg-slate-950/60 text-center text-lg font-semibold text-white">
                     {quantity}
                   </span>
 
@@ -1021,11 +1027,11 @@ export default function ProductDetail() {
                 </div>
               </div>
 
-              <div className="flex gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:flex">
                 <Button
                   onClick={addToCart}
                   disabled={product.stock <= 0}
-                  className="flex-1 gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50"
+                  className="col-span-2 gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 sm:flex-1"
                 >
                   <ShoppingCart className="h-5 w-5" />
                   {product.stock > 0 ? "Adaugă în coș" : "Indisponibil"}
@@ -1054,10 +1060,10 @@ export default function ProductDetail() {
               </div>
             </div>
 
-            <div className={`grid gap-3 ${warrantyValue ? "grid-cols-2" : "grid-cols-3"}`}>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {warrantyValue && (
                 <div className="flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-900/50 p-3">
-                  <Shield className="h-5 w-5 text-cyan-400" />
+                  <Shield className="h-5 w-5 flex-shrink-0 text-cyan-400" />
                   <span className="text-sm text-slate-300">
                     Garanție {warrantyValue}
                   </span>
@@ -1065,17 +1071,17 @@ export default function ProductDetail() {
               )}
 
               <div className="flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-900/50 p-3">
-                <Truck className="h-5 w-5 text-cyan-400" />
+                <Truck className="h-5 w-5 flex-shrink-0 text-cyan-400" />
                 <span className="text-sm text-slate-300">Livrare 24-48h</span>
               </div>
 
               <div className="flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-900/50 p-3">
-                <Package className="h-5 w-5 text-cyan-400" />
+                <Package className="h-5 w-5 flex-shrink-0 text-cyan-400" />
                 <span className="text-sm text-slate-300">Retur 14 zile</span>
               </div>
 
               <div className="flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-900/50 p-3">
-                <Award className="h-5 w-5 text-cyan-400" />
+                <Award className="h-5 w-5 flex-shrink-0 text-cyan-400" />
                 <span className="text-sm text-slate-300">Produs original</span>
               </div>
             </div>
@@ -1087,7 +1093,7 @@ export default function ProductDetail() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <div className="mb-8 grid w-full grid-cols-2 rounded-xl border border-slate-700/50 bg-slate-900/50 p-1 backdrop-blur-sm md:grid-cols-4">
+          <div className="mb-6 grid w-full grid-cols-2 gap-1 rounded-xl border border-slate-700/50 bg-slate-900/50 p-1 backdrop-blur-sm sm:mb-8 md:grid-cols-4">
             {[
               { key: "description", label: "Descriere" },
               { key: "specifications", label: "Specificații" },
@@ -1104,7 +1110,7 @@ export default function ProductDetail() {
                 key={tab.key}
                 type="button"
                 onClick={() => setActiveTab(tab.key)}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+                className={`rounded-lg px-2 py-2 text-xs font-medium transition sm:px-4 sm:text-sm ${
                   activeTab === tab.key
                     ? "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400"
                     : "text-slate-300 hover:text-cyan-300"
@@ -1117,12 +1123,12 @@ export default function ProductDetail() {
 
           {activeTab === "description" && (
             <div className="space-y-6">
-              <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-8 backdrop-blur-sm">
-                <h2 className="mb-4 text-2xl font-bold text-white">
+              <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5 backdrop-blur-sm sm:p-8">
+                <h2 className="mb-4 break-words text-xl font-bold text-white sm:text-2xl">
                   Despre {product.name}
                 </h2>
 
-                <div className="space-y-4 text-slate-300">
+                <div className="space-y-4 text-sm leading-relaxed text-slate-300 sm:text-base">
                   {(product.description || "Descriere indisponibilă momentan.")
                     .split("\n\n")
                     .map((paragraph, idx) => (
@@ -1132,8 +1138,8 @@ export default function ProductDetail() {
 
                 {hasFeatures && (
                   <div className="mt-8">
-                    <h3 className="mb-4 flex items-center gap-2 text-xl font-semibold text-white">
-                      <Zap className="h-6 w-6 text-cyan-400" />
+                    <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-white sm:text-xl">
+                      <Zap className="h-5 w-5 text-cyan-400 sm:h-6 sm:w-6" />
                       Caracteristici complete
                     </h3>
 
@@ -1209,8 +1215,8 @@ export default function ProductDetail() {
           )}
 
           {activeTab === "specifications" && (
-            <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-8 backdrop-blur-sm">
-              <h2 className="mb-6 text-2xl font-bold text-white">
+            <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5 backdrop-blur-sm sm:p-8">
+              <h2 className="mb-6 text-xl font-bold text-white sm:text-2xl">
                 Specificații tehnice complete
               </h2>
 
@@ -1219,14 +1225,14 @@ export default function ProductDetail() {
                   {specificationEntries.map(([key, value], idx) => (
                     <div
                       key={`${key}-${idx}`}
-                      className={`grid grid-cols-2 gap-4 rounded-lg p-4 ${
+                      className={`grid gap-1 rounded-lg p-4 sm:grid-cols-2 sm:gap-4 ${
                         idx % 2 === 0 ? "bg-slate-800/30" : ""
                       }`}
                     >
                       <span className="font-medium text-slate-400">
                         {String(key ?? "")}
                       </span>
-                      <span className="text-white">{String(value ?? "")}</span>
+                      <span className="break-words text-white">{String(value ?? "")}</span>
                     </div>
                   ))}
                 </div>
@@ -1240,11 +1246,11 @@ export default function ProductDetail() {
 
           {activeTab === "reviews" && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-2xl font-bold text-white">Review-uri</h2>
                 <Button
                   onClick={openReviewModal}
-                  className="gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30"
+                  className="w-full gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30 sm:w-auto"
                 >
                   <MessageSquare className="h-4 w-4" />
                   Scrie un review
@@ -1253,10 +1259,10 @@ export default function ProductDetail() {
 
               {hasReviews ? (
                 <>
-                  <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-8 backdrop-blur-sm">
+                  <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5 backdrop-blur-sm sm:p-8">
                     <div className="grid gap-8 md:grid-cols-2">
                       <div className="text-center">
-                        <div className="mb-2 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-6xl font-bold text-transparent">
+                        <div className="mb-2 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-5xl font-bold text-transparent sm:text-6xl">
                           {displayRating.toFixed(1)}
                         </div>
 
@@ -1264,7 +1270,7 @@ export default function ProductDetail() {
                           {[...Array(5)].map((_, i) => (
                             <Star
                               key={i}
-                              className={`h-6 w-6 ${
+                              className={`h-5 w-5 sm:h-6 sm:w-6 ${
                                 i < Math.floor(displayRating)
                                   ? "fill-yellow-400 text-yellow-400"
                                   : "text-slate-600"
@@ -1307,11 +1313,11 @@ export default function ProductDetail() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.08 }}
-                      className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm"
+                      className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5 backdrop-blur-sm sm:p-6"
                     >
-                      <div className="mb-4 flex items-start justify-between">
+                      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                          <div className="mb-1 flex items-center gap-2">
+                          <div className="mb-1 flex flex-wrap items-center gap-2">
                             <span className="font-semibold text-white">
                               {review.author}
                             </span>
@@ -1324,7 +1330,7 @@ export default function ProductDetail() {
                             )}
                           </div>
 
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <div className="flex gap-0.5">
                               {[...Array(5)].map((_, i) => (
                                 <Star
@@ -1351,7 +1357,7 @@ export default function ProductDetail() {
                         </h4>
                       )}
 
-                      <p className="text-slate-300">{review.content}</p>
+                      <p className="break-words text-slate-300">{review.content}</p>
                     </motion.div>
                   ))}
                 </>
@@ -1365,13 +1371,13 @@ export default function ProductDetail() {
 
           {activeTab === "qa" && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-2xl font-bold text-white">
                   Întrebări & Răspunsuri
                 </h2>
                 <Button
                   onClick={openQuestionModal}
-                  className="gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30"
+                  className="w-full gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30 sm:w-auto"
                 >
                   <Send className="h-4 w-4" />
                   Pune o întrebare
@@ -1386,20 +1392,20 @@ export default function ProductDetail() {
                       initial={{ opacity: 0, y: 18 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.08 }}
-                      className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm"
+                      className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5 backdrop-blur-sm sm:p-6"
                     >
                       <div className="mb-3">
                         <div className="mb-1 text-sm text-slate-400">
                           {q.author} • {normalizeDate(q.date)}
                         </div>
-                        <h3 className="font-semibold text-white">{q.question}</h3>
+                        <h3 className="break-words font-semibold text-white">{q.question}</h3>
                       </div>
 
-                      <div className="mb-4 flex justify-end">
+                      <div className="mb-4 flex justify-start sm:justify-end">
                         <Button
                           type="button"
                           onClick={() => openAnswerModal(q)}
-                          className="gap-2 border border-slate-600 bg-transparent text-slate-300 hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400"
+                          className="w-full gap-2 border border-slate-600 bg-transparent text-slate-300 hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400 sm:w-auto"
                         >
                           <MessageSquare className="h-4 w-4" />
                           Răspunde
@@ -1413,7 +1419,7 @@ export default function ProductDetail() {
                               key={answer.id || `${answer.author}-${answerIdx}`}
                               className="rounded-lg border border-slate-700/30 bg-slate-800/30 p-4"
                             >
-                              <div className="mb-1 flex items-center gap-2">
+                              <div className="mb-1 flex flex-wrap items-center gap-2">
                                 <span className="font-medium text-white">
                                   {answer.author}
                                 </span>
@@ -1429,7 +1435,7 @@ export default function ProductDetail() {
                                 {normalizeDate(answer.date)}
                               </div>
 
-                              <p className="text-sm text-slate-300">
+                              <p className="break-words text-sm text-slate-300">
                                 {answer.answer}
                               </p>
                             </div>
@@ -1452,276 +1458,335 @@ export default function ProductDetail() {
           )}
         </motion.div>
 
-        {showReviewModal && (
+        {imagePreviewOpen && (
           <div className="fixed inset-0 z-[100]">
-            <div
-              className="absolute inset-0 bg-black/70"
-              onClick={() => setShowReviewModal(false)}
+            <button
+              type="button"
+              className="absolute inset-0 bg-black/80"
+              onClick={() => setImagePreviewOpen(false)}
+              aria-label="Închide imaginea mărită"
             />
 
-            <div className="absolute left-1/2 top-1/2 w-[95vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-700/60 bg-slate-950/95 p-6 shadow-2xl backdrop-blur-xl">
-              <div className="mb-6 flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-bold text-white">Scrie un review</h3>
-                  <p className="mt-1 text-sm text-slate-400">
-                    Review-ul va deveni public după aprobarea unui administrator.
-                  </p>
-                </div>
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+              <div className="pointer-events-auto relative w-full max-w-5xl rounded-2xl border border-slate-700/60 bg-slate-950/95 p-4 shadow-2xl backdrop-blur-xl sm:p-6">
                 <button
                   type="button"
-                  onClick={() => setShowReviewModal(false)}
-                  className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+                  onClick={() => setImagePreviewOpen(false)}
+                  className="absolute right-3 top-3 z-10 rounded-xl border border-slate-700 bg-slate-900/90 p-2 text-slate-300 transition hover:border-cyan-500/50 hover:bg-slate-800 hover:text-white"
+                  aria-label="Închide"
                 >
                   <X className="h-5 w-5" />
                 </button>
-              </div>
 
-              {reviewError && (
-                <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                  {reviewError}
-                </div>
-              )}
+                <ImageWithFallback
+                  src={currentImage}
+                  alt={product.name}
+                  className="max-h-[78vh] w-full object-contain"
+                />
 
-              <form onSubmit={handleReviewSubmit} className="space-y-5">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-300">
-                    Rating *
-                  </label>
-                  <div className="flex gap-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
+                {images.length > 1 && (
+                  <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+                    {images.map((img, idx) => (
                       <button
-                        key={star}
+                        key={`preview-${img.key}-${idx}`}
                         type="button"
-                        onClick={() =>
-                          setReviewForm((prev) => ({ ...prev, rating: star }))
-                        }
-                        className="rounded-lg p-2 transition hover:bg-slate-800"
+                        onClick={() => setSelectedImage(idx)}
+                        className={`h-16 w-20 flex-shrink-0 overflow-hidden rounded-lg border-2 bg-slate-900 transition ${
+                          selectedImage === idx
+                            ? "border-cyan-500"
+                            : "border-slate-700 hover:border-slate-500"
+                        }`}
                       >
-                        <Star
-                          className={`h-7 w-7 ${
-                            star <= reviewForm.rating
-                              ? "fill-yellow-400 text-yellow-400"
-                              : "text-slate-600"
-                          }`}
+                        <ImageWithFallback
+                          src={img.src}
+                          alt={img.alt}
+                          className="h-full w-full object-contain p-1"
                         />
                       </button>
                     ))}
                   </div>
-                </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-300">
-                    Titlu
-                  </label>
-                  <input
-                    type="text"
-                    value={reviewForm.title}
-                    onChange={(e) =>
-                      setReviewForm((prev) => ({ ...prev, title: e.target.value }))
-                    }
-                    placeholder="Ex: Foarte bun pentru gaming"
-                    className="w-full rounded-xl border border-slate-700/80 bg-slate-800/90 px-4 py-3 text-sm text-white placeholder:text-slate-400 outline-none transition-all focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/10"
-                  />
-                </div>
+        {showReviewModal && (
+          <div className="fixed inset-0 z-[100] overflow-y-auto">
+            <div
+              className="fixed inset-0 bg-black/70"
+              onClick={() => setShowReviewModal(false)}
+            />
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-300">
-                    Conținut review *
-                  </label>
-                  <textarea
-                    rows={6}
-                    value={reviewForm.content}
-                    onChange={(e) =>
-                      setReviewForm((prev) => ({ ...prev, content: e.target.value }))
-                    }
-                    placeholder="Scrie experiența ta cu produsul..."
-                    className="w-full rounded-xl border border-slate-700/80 bg-slate-800/90 px-4 py-3 text-sm text-white placeholder:text-slate-400 outline-none transition-all focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/10"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-3">
-                  <Button
+            <div className="relative mx-auto flex min-h-full w-full max-w-2xl items-center px-4 py-6">
+              <div className="w-full rounded-2xl border border-slate-700/60 bg-slate-950/95 p-4 shadow-2xl backdrop-blur-xl sm:p-6">
+                <div className="mb-6 flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Scrie un review</h3>
+                    <p className="mt-1 text-sm text-slate-400">
+                      Review-ul va deveni public după aprobarea unui administrator.
+                    </p>
+                  </div>
+                  <button
                     type="button"
                     onClick={() => setShowReviewModal(false)}
-                    className="border border-slate-600 bg-transparent text-slate-300 hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400"
+                    className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white"
                   >
-                    Anulează
-                  </Button>
-
-                  <Button
-                    type="submit"
-                    disabled={reviewSubmitting}
-                    className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30"
-                  >
-                    {reviewSubmitting ? "Se trimite..." : "Trimite review"}
-                  </Button>
+                    <X className="h-5 w-5" />
+                  </button>
                 </div>
-              </form>
+
+                {reviewError && (
+                  <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                    {reviewError}
+                  </div>
+                )}
+
+                <form onSubmit={handleReviewSubmit} className="space-y-5">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-300">
+                      Rating *
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() =>
+                            setReviewForm((prev) => ({ ...prev, rating: star }))
+                          }
+                          className="rounded-lg p-2 transition hover:bg-slate-800"
+                        >
+                          <Star
+                            className={`h-7 w-7 ${
+                              star <= reviewForm.rating
+                                ? "fill-yellow-400 text-yellow-400"
+                                : "text-slate-600"
+                            }`}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-300">
+                      Titlu
+                    </label>
+                    <input
+                      type="text"
+                      value={reviewForm.title}
+                      onChange={(e) =>
+                        setReviewForm((prev) => ({ ...prev, title: e.target.value }))
+                      }
+                      placeholder="Ex: Foarte bun pentru gaming"
+                      className="w-full rounded-xl border border-slate-700/80 bg-slate-800/90 px-4 py-3 text-sm text-white placeholder:text-slate-400 outline-none transition-all focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/10"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-300">
+                      Conținut review *
+                    </label>
+                    <textarea
+                      rows={6}
+                      value={reviewForm.content}
+                      onChange={(e) =>
+                        setReviewForm((prev) => ({ ...prev, content: e.target.value }))
+                      }
+                      placeholder="Scrie experiența ta cu produsul..."
+                      className="w-full rounded-xl border border-slate-700/80 bg-slate-800/90 px-4 py-3 text-sm text-white placeholder:text-slate-400 outline-none transition-all focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/10"
+                    />
+                  </div>
+
+                  <div className="grid gap-3 sm:flex sm:justify-end">
+                    <Button
+                      type="button"
+                      onClick={() => setShowReviewModal(false)}
+                      className="border border-slate-600 bg-transparent text-slate-300 hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400"
+                    >
+                      Anulează
+                    </Button>
+
+                    <Button
+                      type="submit"
+                      disabled={reviewSubmitting}
+                      className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30"
+                    >
+                      {reviewSubmitting ? "Se trimite..." : "Trimite review"}
+                    </Button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
         )}
 
         {showQuestionModal && (
-          <div className="fixed inset-0 z-[100]">
+          <div className="fixed inset-0 z-[100] overflow-y-auto">
             <div
-              className="absolute inset-0 bg-black/70"
+              className="fixed inset-0 bg-black/70"
               onClick={() => setShowQuestionModal(false)}
             />
 
-            <div className="absolute left-1/2 top-1/2 w-[95vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-700/60 bg-slate-950/95 p-6 shadow-2xl backdrop-blur-xl">
-              <div className="mb-6 flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-bold text-white">Pune o întrebare</h3>
-                  <p className="mt-1 text-sm text-slate-400">
-                    Întrebarea va deveni publică după aprobarea unui administrator.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowQuestionModal(false)}
-                  className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              {questionError && (
-                <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                  {questionError}
-                </div>
-              )}
-
-              <form onSubmit={handleQuestionSubmit} className="space-y-5">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-300">
-                    Întrebarea ta *
-                  </label>
-                  <textarea
-                    rows={6}
-                    value={questionForm.question}
-                    onChange={(e) =>
-                      setQuestionForm({ question: e.target.value })
-                    }
-                    placeholder="Ex: Vine cu cooler inclus? Este compatibil cu AM5?"
-                    className="w-full rounded-xl border border-slate-700/80 bg-slate-800/90 px-4 py-3 text-sm text-white placeholder:text-slate-400 outline-none transition-all focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/10"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-3">
-                  <Button
+            <div className="relative mx-auto flex min-h-full w-full max-w-2xl items-center px-4 py-6">
+              <div className="w-full rounded-2xl border border-slate-700/60 bg-slate-950/95 p-4 shadow-2xl backdrop-blur-xl sm:p-6">
+                <div className="mb-6 flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Pune o întrebare</h3>
+                    <p className="mt-1 text-sm text-slate-400">
+                      Întrebarea va deveni publică după aprobarea unui administrator.
+                    </p>
+                  </div>
+                  <button
                     type="button"
                     onClick={() => setShowQuestionModal(false)}
-                    className="border border-slate-600 bg-transparent text-slate-300 hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400"
+                    className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white"
                   >
-                    Anulează
-                  </Button>
-
-                  <Button
-                    type="submit"
-                    disabled={questionSubmitting}
-                    className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30"
-                  >
-                    {questionSubmitting ? "Se trimite..." : "Trimite întrebarea"}
-                  </Button>
+                    <X className="h-5 w-5" />
+                  </button>
                 </div>
-              </form>
+
+                {questionError && (
+                  <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                    {questionError}
+                  </div>
+                )}
+
+                <form onSubmit={handleQuestionSubmit} className="space-y-5">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-300">
+                      Întrebarea ta *
+                    </label>
+                    <textarea
+                      rows={6}
+                      value={questionForm.question}
+                      onChange={(e) =>
+                        setQuestionForm({ question: e.target.value })
+                      }
+                      placeholder="Ex: Vine cu cooler inclus? Este compatibil cu AM5?"
+                      className="w-full rounded-xl border border-slate-700/80 bg-slate-800/90 px-4 py-3 text-sm text-white placeholder:text-slate-400 outline-none transition-all focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/10"
+                    />
+                  </div>
+
+                  <div className="grid gap-3 sm:flex sm:justify-end">
+                    <Button
+                      type="button"
+                      onClick={() => setShowQuestionModal(false)}
+                      className="border border-slate-600 bg-transparent text-slate-300 hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400"
+                    >
+                      Anulează
+                    </Button>
+
+                    <Button
+                      type="submit"
+                      disabled={questionSubmitting}
+                      className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30"
+                    >
+                      {questionSubmitting ? "Se trimite..." : "Trimite întrebarea"}
+                    </Button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
         )}
 
         {showAnswerModal && selectedQuestion && (
-          <div className="fixed inset-0 z-[100]">
+          <div className="fixed inset-0 z-[100] overflow-y-auto">
             <div
-              className="absolute inset-0 bg-black/70"
+              className="fixed inset-0 bg-black/70"
               onClick={() => {
                 setShowAnswerModal(false);
                 setSelectedQuestion(null);
               }}
             />
 
-            <div className="absolute left-1/2 top-1/2 w-[95vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-700/60 bg-slate-950/95 p-6 shadow-2xl backdrop-blur-xl">
-              <div className="mb-6 flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-xl font-bold text-white">
-                    Răspunde la întrebare
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-400">
-                    {isAdmin
-                      ? "Răspunsul tău va fi publicat imediat ca răspuns oficial."
-                      : "Răspunsul tău va deveni public după aprobarea unui administrator."}
-                  </p>
-                </div>
+            <div className="relative mx-auto flex min-h-full w-full max-w-2xl items-center px-4 py-6">
+              <div className="w-full rounded-2xl border border-slate-700/60 bg-slate-950/95 p-4 shadow-2xl backdrop-blur-xl sm:p-6">
+                <div className="mb-6 flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-white">
+                      Răspunde la întrebare
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-400">
+                      {isAdmin
+                        ? "Răspunsul tău va fi publicat imediat ca răspuns oficial."
+                        : "Răspunsul tău va deveni public după aprobarea unui administrator."}
+                    </p>
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAnswerModal(false);
-                    setSelectedQuestion(null);
-                  }}
-                  className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="mb-4 rounded-xl border border-slate-700/50 bg-slate-900/60 p-4">
-                <div className="mb-1 text-xs uppercase tracking-wide text-slate-500">
-                  Întrebare
-                </div>
-                <p className="text-sm text-slate-200">
-                  {selectedQuestion.question}
-                </p>
-              </div>
-
-              {answerError && (
-                <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                  {answerError}
-                </div>
-              )}
-
-              <form onSubmit={handleAnswerSubmit} className="space-y-5">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-300">
-                    Răspunsul tău *
-                  </label>
-                  <textarea
-                    rows={6}
-                    value={answerForm.answer}
-                    onChange={(e) =>
-                      setAnswerForm({
-                        answer: e.target.value,
-                      })
-                    }
-                    placeholder="Scrie răspunsul aici..."
-                    className="w-full rounded-xl border border-slate-700/80 bg-slate-800/90 px-4 py-3 text-sm text-white placeholder:text-slate-400 outline-none transition-all focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/10"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-3">
-                  <Button
+                  <button
                     type="button"
                     onClick={() => {
                       setShowAnswerModal(false);
                       setSelectedQuestion(null);
                     }}
-                    className="border border-slate-600 bg-transparent text-slate-300 hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400"
+                    className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white"
                   >
-                    Anulează
-                  </Button>
-
-                  <Button
-                    type="submit"
-                    disabled={answerSubmitting}
-                    className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30"
-                  >
-                    {answerSubmitting
-                      ? "Se trimite..."
-                      : isAdmin
-                      ? "Publică răspuns oficial"
-                      : "Trimite răspuns"}
-                  </Button>
+                    <X className="h-5 w-5" />
+                  </button>
                 </div>
-              </form>
+
+                <div className="mb-4 rounded-xl border border-slate-700/50 bg-slate-900/60 p-4">
+                  <div className="mb-1 text-xs uppercase tracking-wide text-slate-500">
+                    Întrebare
+                  </div>
+                  <p className="break-words text-sm text-slate-200">
+                    {selectedQuestion.question}
+                  </p>
+                </div>
+
+                {answerError && (
+                  <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                    {answerError}
+                  </div>
+                )}
+
+                <form onSubmit={handleAnswerSubmit} className="space-y-5">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-300">
+                      Răspunsul tău *
+                    </label>
+                    <textarea
+                      rows={6}
+                      value={answerForm.answer}
+                      onChange={(e) =>
+                        setAnswerForm({
+                          answer: e.target.value,
+                        })
+                      }
+                      placeholder="Scrie răspunsul aici..."
+                      className="w-full rounded-xl border border-slate-700/80 bg-slate-800/90 px-4 py-3 text-sm text-white placeholder:text-slate-400 outline-none transition-all focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/10"
+                    />
+                  </div>
+
+                  <div className="grid gap-3 sm:flex sm:justify-end">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setShowAnswerModal(false);
+                        setSelectedQuestion(null);
+                      }}
+                      className="border border-slate-600 bg-transparent text-slate-300 hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400"
+                    >
+                      Anulează
+                    </Button>
+
+                    <Button
+                      type="submit"
+                      disabled={answerSubmitting}
+                      className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30"
+                    >
+                      {answerSubmitting
+                        ? "Se trimite..."
+                        : isAdmin
+                        ? "Publică răspuns oficial"
+                        : "Trimite răspuns"}
+                    </Button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
         )}

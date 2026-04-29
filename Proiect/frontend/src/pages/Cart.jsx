@@ -7,7 +7,6 @@ import {
   Minus,
   X,
   Trash2,
-  Tag,
   Shield,
   Truck,
   CreditCard,
@@ -82,7 +81,6 @@ export default function Cart() {
   const navigate = useNavigate();
   const { isAuthenticated, isAuthLoading } = useAuth();
 
-  const [promoCode, setPromoCode] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
   const [loadingDb, setLoadingDb] = useState(false);
@@ -306,7 +304,7 @@ export default function Cart() {
   const pageLoading = isAuthLoading || (isAuthenticated && loadingDb);
 
   return (
-    <div className="min-h-screen px-6 py-12">
+    <div className="min-h-screen overflow-x-hidden px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-7xl">
         <motion.div
           initial={{ opacity: 0, y: 18 }}
@@ -314,14 +312,16 @@ export default function Cart() {
           className="mb-8"
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 ring-1 ring-cyan-500/30">
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 ring-1 ring-cyan-500/30">
               <ShoppingCart className="h-6 w-6 text-cyan-400" />
             </div>
-            <div>
-              <h1 className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-4xl font-bold text-transparent">
+
+            <div className="min-w-0">
+              <h1 className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-4xl font-bold leading-tight text-transparent sm:text-5xl lg:text-4xl">
                 Coșul meu
               </h1>
-              <p className="text-slate-400">
+
+              <p className="text-sm text-slate-400 sm:text-base">
                 {itemsCount} {itemsCount === 1 ? "produs" : "produse"} în coș
                 {!isAuthenticated && !isAuthLoading && (
                   <span className="ml-2 text-xs text-slate-500">(guest)</span>
@@ -354,45 +354,59 @@ export default function Cart() {
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.06 }}
-                    className="group relative overflow-hidden rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm transition-all hover:border-cyan-500/30 hover:bg-slate-800/50"
+                    className="group relative overflow-hidden rounded-xl border border-slate-700/50 bg-slate-900/50 p-4 backdrop-blur-sm transition-all hover:border-cyan-500/30 hover:bg-slate-800/50 sm:p-6"
                   >
                     <button
                       type="button"
                       onClick={() => removeItem(item.id)}
                       disabled={isBusy}
-                      className="absolute right-4 top-4 rounded-full bg-slate-800/80 p-2 opacity-0 backdrop-blur-sm transition-all hover:bg-red-500/20 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="absolute right-3 top-3 z-10 rounded-full bg-slate-900/80 p-2 opacity-100 backdrop-blur-sm transition-all hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60 sm:right-4 sm:top-4 sm:opacity-0 sm:group-hover:opacity-100"
                       title="Șterge produs"
                     >
                       <X className="h-4 w-4 text-slate-400 transition-colors hover:text-red-400" />
                     </button>
 
-                    <div className="flex gap-6">
-                      <div className="h-32 w-32 flex-shrink-0 overflow-hidden rounded-lg bg-slate-800">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
+                      <button
+                        type="button"
+                        onClick={() => p.id && navigate(`/products/${p.id}`)}
+                        className="h-48 w-full flex-shrink-0 overflow-hidden rounded-xl bg-slate-800 transition hover:ring-2 hover:ring-cyan-500/30 sm:h-32 sm:w-32"
+                        title="Vezi produsul"
+                      >
                         <ImageWithFallback
                           src={resolveProductImage(p.imageUrl)}
                           alt={p.name || "Produs"}
-                          className="h-full w-full object-cover"
+                          className="h-full w-full object-contain p-3 transition-transform duration-500 group-hover:scale-105 sm:object-cover sm:p-0"
                         />
-                      </div>
+                      </button>
 
-                      <div className="flex flex-1 flex-col justify-between">
-                        <div>
+                      <div className="flex min-w-0 flex-1 flex-col justify-between gap-4">
+                        <div className="min-w-0 pr-10 sm:pr-8">
                           <span className="mb-2 inline-flex rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-xs font-semibold text-cyan-400">
                             {p.category || "Categorie"}
                           </span>
-                          <p className="mb-1 text-xs font-medium text-cyan-400">
+
+                          <p className="mb-1 truncate text-xs font-medium text-cyan-400">
                             {p.brand || "Brand"}
                           </p>
-                          <h3 className="mb-2 text-lg font-semibold text-white">
-                            {p.name || "Produs"}
-                          </h3>
+
+                          <button
+                            type="button"
+                            onClick={() => p.id && navigate(`/products/${p.id}`)}
+                            className="text-left"
+                          >
+                            <h3 className="mb-2 line-clamp-2 break-words text-lg font-semibold text-white transition hover:text-cyan-300">
+                              {p.name || "Produs"}
+                            </h3>
+                          </button>
                         </div>
 
-                        <div className="flex items-end justify-between gap-4">
-                          <div className="flex items-center gap-3">
+                        <div className="grid gap-4 xl:flex xl:items-end xl:justify-between">
+                          <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-700/50 bg-slate-950/30 p-3 sm:w-fit">
                             <span className="text-sm text-slate-400">
-                              Cantitate:
+                              Cantitate
                             </span>
+
                             <div className="flex items-center gap-2">
                               <button
                                 type="button"
@@ -400,12 +414,12 @@ export default function Cart() {
                                   updateQuantity(item.id, item.quantity - 1)
                                 }
                                 disabled={isBusy || item.quantity <= 1}
-                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 text-slate-300 transition-all hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 text-slate-300 transition-all hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
                               >
                                 <Minus className="h-4 w-4" />
                               </button>
 
-                              <span className="flex h-8 w-12 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 font-medium text-white">
+                              <span className="flex h-9 w-12 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 font-medium text-white">
                                 {item.quantity}
                               </span>
 
@@ -415,20 +429,21 @@ export default function Cart() {
                                   updateQuantity(item.id, item.quantity + 1)
                                 }
                                 disabled={isBusy}
-                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 text-slate-300 transition-all hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 text-slate-300 transition-all hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
                               >
                                 <Plus className="h-4 w-4" />
                               </button>
                             </div>
                           </div>
 
-                          <div className="text-right">
-                            <div className="flex items-baseline justify-end gap-2">
+                          <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-3 py-2 text-center xl:min-w-[180px] xl:text-right">
+                            <div className="flex flex-wrap items-baseline justify-center gap-2 xl:justify-end">
                               <span className="text-2xl font-bold text-cyan-400">
                                 {formatRon(item.lineTotalRon)}
                               </span>
                               <span className="text-sm text-slate-400">RON</span>
                             </div>
+
                             <div className="text-xs text-slate-500">
                               {formatRon(item.unitPriceRon)} RON / buc
                             </div>
@@ -440,15 +455,16 @@ export default function Cart() {
                 );
               })}
 
-              <button
+              <center><button
                 type="button"
                 onClick={clearCart}
                 disabled={actionLoading}
-                className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-400 transition hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-700/50 px-3 py-2 text-sm text-slate-400 transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-60"
+                
               >
                 <Trash2 className="h-4 w-4" />
                 Golește coșul
-              </button>
+              </button></center>
             </div>
 
             <div className="lg:col-span-1">
@@ -456,49 +472,27 @@ export default function Cart() {
                 initial={{ opacity: 0, x: 16 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.12 }}
-                className="sticky top-24 space-y-6"
+                className="space-y-6 lg:sticky lg:top-24"
               >
-                <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm">
-                  <div className="mb-3 flex items-center gap-2">
-                    <Tag className="h-4 w-4 text-cyan-400" />
-                    <h3 className="font-semibold text-white">Cod promoțional</h3>
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={promoCode}
-                      onChange={(e) => setPromoCode(e.target.value)}
-                      placeholder="Introdu codul"
-                      className="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      className="rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-cyan-500 hover:bg-cyan-500/10 hover:text-cyan-400"
-                    >
-                      Aplică
-                    </button>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-cyan-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-6 shadow-lg shadow-cyan-500/10">
+                <div className="rounded-xl border border-cyan-500/30 bg-gradient-to-br from-slate-900 to-slate-800 p-5 shadow-lg shadow-cyan-500/10 sm:p-6">
                   <h3 className="mb-4 font-semibold text-white">Sumar comandă</h3>
 
                   <div className="mb-6 space-y-3">
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between gap-4 text-sm">
                       <span className="text-slate-400">Subtotal</span>
                       <span className="font-medium text-white">
                         {formatRon(uiCart.subtotalRon)} RON
                       </span>
                     </div>
 
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between gap-4 text-sm">
                       <span className="text-slate-400">TVA (21%)</span>
                       <span className="font-medium text-white">
                         {formatRon(uiCart.tvaRon)} RON
                       </span>
                     </div>
 
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between gap-4 text-sm">
                       <span className="text-slate-400">Transport</span>
                       {uiCart.shippingRon === 0 ? (
                         <span className="font-medium text-green-400">GRATUIT</span>
@@ -510,10 +504,11 @@ export default function Cart() {
                     </div>
 
                     <div className="border-t border-slate-700 pt-3">
-                      <div className="flex justify-between">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                         <span className="text-lg text-white">Total</span>
-                        <div className="text-right">
-                          <div className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-3xl font-bold text-transparent">
+
+                        <div className="text-left sm:text-right">
+                          <div className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-4xl font-bold leading-tight text-transparent sm:text-3xl">
                             {formatRon(uiCart.totalRon)}
                           </div>
                           <div className="text-xs text-slate-400">RON</div>
@@ -539,7 +534,7 @@ export default function Cart() {
                   )}
                 </div>
 
-                <div className="space-y-3 rounded-xl border border-slate-700/50 bg-slate-900/50 p-6 backdrop-blur-sm">
+                <div className="grid gap-3 rounded-xl border border-slate-700/50 bg-slate-900/50 p-5 backdrop-blur-sm sm:p-6">
                   <div className="flex items-start gap-3">
                     <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-cyan-500/10">
                       <Truck className="h-4 w-4 text-cyan-400" />
@@ -583,17 +578,20 @@ export default function Cart() {
           <motion.div
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex min-h-[60vh] flex-col items-center justify-center"
+            className="flex min-h-[60vh] flex-col items-center justify-center text-center"
           >
             <div className="mb-6 flex h-32 w-32 items-center justify-center rounded-full bg-slate-800/50">
               <ShoppingCart className="h-16 w-16 text-slate-600" />
             </div>
+
             <h2 className="mb-2 text-2xl font-bold text-white">
               Coșul tău este gol
             </h2>
-            <p className="mb-8 text-slate-400">
-              Adaugă produse în coș pentru a continua
+
+            <p className="mb-8 max-w-md text-slate-400">
+              Adaugă produse în coș pentru a continua.
             </p>
+
             <button
               type="button"
               onClick={() => navigate("/components")}

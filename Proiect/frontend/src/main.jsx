@@ -23,6 +23,8 @@ import AdminDashboard from "./pages/AdminDashboard.jsx";
 import VerifyEmail from "./pages/VerifyEmail";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
 import ResetPasswordPage from "./pages/ResetPassword.jsx";
+import AIConfiguratorPage from "./pages/AIConfiguratorPage.jsx";
+
 
 function PlaceholderPage({ title }) {
   return (
@@ -46,7 +48,7 @@ const router = createBrowserRouter([
       { path: "login", element: <Login /> },
 
       { path: "configurator", element: <Configurator /> },
-      { path: "ai-configurator", element: <PlaceholderPage title="AI Configurator" /> },
+      { path: "ai-configurator",element: (<ProtectedRoute><AIConfiguratorPage /></ProtectedRoute>),},
 
       { path: "components", element: <Components /> },
       { path: "components/:category", element: <Components /> },

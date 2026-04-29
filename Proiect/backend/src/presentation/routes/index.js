@@ -10,6 +10,7 @@ import { configuratorRoutes } from "./configurator.routes.js";
 import { buildsRoutes } from "./builds.routes.js";
 import { paymentsRoutes } from "./payments.routes.js";
 import { adminRoutes } from "./admin.routes.js";
+import { aiRoutes } from "./ai.routes.js";
 
 export function registerRoutes() {
   const router = Router();
@@ -25,6 +26,7 @@ export function registerRoutes() {
   router.use("/builds", buildsRoutes());
   router.use("/payments", paymentsRoutes());
   router.use("/admin", adminRoutes());
-  
+  router.use("/ai", aiRoutes());
+
   return router;
 }

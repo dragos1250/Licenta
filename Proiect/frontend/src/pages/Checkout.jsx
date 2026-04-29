@@ -666,7 +666,7 @@ export default function Checkout() {
               <ShieldCheck className="h-6 w-6 text-cyan-400" />
             </div>
             <div>
-              <h1 className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-4xl font-bold text-transparent">
+              <h1 className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-3xl font-bold text-transparent">
                 Finalizare comandă
               </h1>
               <p className="text-slate-400">

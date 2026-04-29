@@ -1,7 +1,11 @@
 import { useEffect, useRef } from "react";
 import api from "../lib/api";
 
+const GOOGLE_SCRIPT_SRC = "https://accounts.google.com/gsi/client";
+
 let gisScriptPromise = null;
+let googleInitialized = false;
+let googleCredentialHandler = null;
 
 function loadGoogleScript() {
   if (window.google?.accounts?.id) {
@@ -11,7 +15,7 @@ function loadGoogleScript() {
   if (!gisScriptPromise) {
     gisScriptPromise = new Promise((resolve, reject) => {
       const existingScript = document.querySelector(
-        'script[src="https://accounts.google.com/gsi/client"]'
+        `script[src="${GOOGLE_SCRIPT_SRC}"]`
       );
 
       if (existingScript) {
@@ -23,26 +27,48 @@ function loadGoogleScript() {
         existingScript.addEventListener("load", () => resolve(), {
           once: true,
         });
+
         existingScript.addEventListener(
           "error",
           () => reject(new Error("Nu am putut încărca scriptul Google.")),
           { once: true }
         );
+
         return;
       }
 
       const script = document.createElement("script");
-      script.src = "https://accounts.google.com/gsi/client";
+      script.src = GOOGLE_SCRIPT_SRC;
       script.async = true;
       script.defer = true;
       script.onload = () => resolve();
       script.onerror = () =>
         reject(new Error("Nu am putut încărca scriptul Google."));
+
       document.head.appendChild(script);
     });
   }
 
   return gisScriptPromise;
+}
+
+function initializeGoogleIdentity() {
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  if (!clientId) {
+    throw new Error("Lipsește VITE_GOOGLE_CLIENT_ID din .env.");
+  }
+
+  if (googleInitialized) return;
+
+  window.google.accounts.id.initialize({
+    client_id: clientId,
+    callback: (response) => {
+      googleCredentialHandler?.(response);
+    },
+  });
+
+  googleInitialized = true;
 }
 
 export default function GoogleSignInButton({
@@ -51,7 +77,6 @@ export default function GoogleSignInButton({
   onNeedsVerification,
 }) {
   const buttonRef = useRef(null);
-  const initializedRef = useRef(false);
 
   const onSuccessRef = useRef(onSuccess);
   const onErrorRef = useRef(onError);
@@ -72,31 +97,32 @@ export default function GoogleSignInButton({
   useEffect(() => {
     let cancelled = false;
 
-    const initGoogle = async () => {
+    const currentCredentialHandler = async (response) => {
+      try {
+        const { data } = await api.post("/auth/google", {
+          credential: response.credential,
+        });
+
+        if (data?.requiresEmailVerification) {
+          onNeedsVerificationRef.current?.(data);
+          return;
+        }
+
+        onSuccessRef.current?.(data);
+      } catch (error) {
+        onErrorRef.current?.(error);
+      }
+    };
+
+    googleCredentialHandler = currentCredentialHandler;
+
+    const renderGoogleButton = async () => {
       try {
         await loadGoogleScript();
 
-        if (cancelled || !buttonRef.current || initializedRef.current) return;
+        if (cancelled || !buttonRef.current) return;
 
-        window.google.accounts.id.initialize({
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-          callback: async (response) => {
-            try {
-              const { data } = await api.post("/auth/google", {
-                credential: response.credential,
-              });
-
-              if (data?.requiresEmailVerification) {
-                onNeedsVerificationRef.current?.(data);
-                return;
-              }
-
-              onSuccessRef.current?.(data);
-            } catch (error) {
-              onErrorRef.current?.(error);
-            }
-          },
-        });
+        initializeGoogleIdentity();
 
         buttonRef.current.innerHTML = "";
 
@@ -107,17 +133,23 @@ export default function GoogleSignInButton({
           shape: "pill",
           width: 320,
         });
-
-        initializedRef.current = true;
       } catch (error) {
         onErrorRef.current?.(error);
       }
     };
 
-    initGoogle();
+    renderGoogleButton();
 
     return () => {
       cancelled = true;
+
+      if (googleCredentialHandler === currentCredentialHandler) {
+        googleCredentialHandler = null;
+      }
+
+      if (buttonRef.current) {
+        buttonRef.current.innerHTML = "";
+      }
     };
   }, []);
 

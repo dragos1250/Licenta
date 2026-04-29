@@ -183,45 +183,50 @@ export default function Login() {
   ];
 
   return (
-    <div className="relative flex min-h-[calc(100vh-80px)] items-center justify-center px-6 py-12">
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute left-1/4 top-1/4 h-96 w-96 rounded-full bg-cyan-500/10 blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 h-96 w-96 rounded-full bg-purple-500/10 blur-3xl" />
+    <div className="relative min-h-[calc(100vh-80px)] overflow-x-hidden px-4 py-8 sm:px-6 sm:py-12">
+      <div className="absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute left-1/2 top-10 h-72 w-72 -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl sm:left-1/4 sm:top-1/4 sm:h-96 sm:w-96" />
+        <div className="absolute bottom-0 right-0 h-72 w-72 rounded-full bg-purple-500/10 blur-3xl sm:bottom-1/4 sm:right-1/4 sm:h-96 sm:w-96" />
       </div>
 
-      <div className="w-full max-w-5xl">
+      <div className="mx-auto w-full max-w-5xl">
         <motion.div
           initial={{ opacity: 0, y: 26 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55 }}
         >
-          <div className="mb-8 text-center">
-            <Link to="/" className="mb-4 inline-flex items-center gap-3">
+          <div className="mb-6 text-center sm:mb-8">
+            <Link
+              to="/"
+              className="mb-3 inline-flex items-center justify-center gap-3 sm:mb-4"
+            >
               <div className="relative">
-                <div className="absolute inset-0 animate-pulse rounded-lg bg-cyan-500/20 blur-xl" />
-                <div className="relative flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600">
-                  <Sparkles className="h-6 w-6 text-white" />
+                <div className="absolute inset-0 animate-pulse rounded-xl bg-cyan-500/20 blur-xl" />
+                <div className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 sm:h-12 sm:w-12">
+                  <Sparkles className="h-5 w-5 text-white sm:h-6 sm:w-6" />
                 </div>
               </div>
-              <h1 className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-3xl font-bold tracking-tight text-transparent">
+
+              <h1 className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-2xl font-bold tracking-tight text-transparent sm:text-3xl">
                 ConfigEXP
               </h1>
             </Link>
-            <p className="text-lg text-slate-400">
+
+            <p className="text-sm text-slate-400 sm:text-lg">
               Configurează PC-ul perfect pentru tine
             </p>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-900/80 backdrop-blur-xl">
-            <div className="grid md:grid-cols-2">
-              <div className="p-8 md:p-10">
-                <div className="mb-6 grid grid-cols-2 rounded-xl border border-slate-700/50 bg-slate-800/50 p-1">
+          <div className="overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-900/80 shadow-2xl shadow-black/20 backdrop-blur-xl">
+            <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.92fr)]">
+              <div className="min-w-0 p-4 sm:p-6 md:p-8 lg:p-10">
+                <div className="mb-5 grid grid-cols-2 rounded-xl border border-slate-700/50 bg-slate-800/50 p-1 sm:mb-6">
                   <button
                     type="button"
                     onClick={() => setActiveTab("login")}
-                    className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+                    className={`rounded-lg px-3 py-2.5 text-xs font-semibold transition sm:px-4 sm:text-sm ${
                       activeTab === "login"
-                        ? "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400"
+                        ? "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300 shadow-lg shadow-cyan-500/10"
                         : "text-slate-300 hover:text-cyan-300"
                     }`}
                   >
@@ -231,9 +236,9 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setActiveTab("register")}
-                    className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+                    className={`rounded-lg px-3 py-2.5 text-xs font-semibold transition sm:px-4 sm:text-sm ${
                       activeTab === "register"
-                        ? "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-400"
+                        ? "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300 shadow-lg shadow-cyan-500/10"
                         : "text-slate-300 hover:text-cyan-300"
                     }`}
                   >
@@ -242,21 +247,21 @@ export default function Login() {
                 </div>
 
                 {errorMsg && (
-                  <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                  <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-sm text-red-300">
                     {errorMsg}
                   </div>
                 )}
 
                 {successMsg && (
-                  <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+                  <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-sm text-emerald-300">
                     {successMsg}
                   </div>
                 )}
 
                 {activeTab === "login" && (
-                  <div className="space-y-6">
+                  <div className="space-y-5 sm:space-y-6">
                     <div>
-                      <h2 className="mb-2 text-2xl font-bold text-white">
+                      <h2 className="mb-1 text-xl font-bold text-white sm:mb-2 sm:text-2xl">
                         Bine ai revenit!
                       </h2>
                       <p className="text-sm text-slate-400">
@@ -273,6 +278,7 @@ export default function Login() {
                           <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
                           <input
                             type="email"
+                            autoComplete="email"
                             placeholder="alex@example.com"
                             value={loginForm.email}
                             onChange={(e) =>
@@ -281,7 +287,7 @@ export default function Login() {
                                 email: e.target.value,
                               })
                             }
-                            className="w-full rounded-lg border border-slate-700 bg-slate-800 py-3 pl-11 pr-4 text-white placeholder-slate-500 transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                            className="w-full min-w-0 rounded-xl border border-slate-700 bg-slate-800/90 py-3 pl-11 pr-4 text-sm text-white placeholder-slate-500 transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 sm:text-base"
                           />
                         </div>
                       </div>
@@ -294,6 +300,7 @@ export default function Login() {
                           <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
                           <input
                             type={showPassword ? "text" : "password"}
+                            autoComplete="current-password"
                             placeholder="••••••••"
                             value={loginForm.password}
                             onChange={(e) =>
@@ -302,12 +309,15 @@ export default function Login() {
                                 password: e.target.value,
                               })
                             }
-                            className="w-full rounded-lg border border-slate-700 bg-slate-800 py-3 pl-11 pr-11 text-white placeholder-slate-500 transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                            className="w-full min-w-0 rounded-xl border border-slate-700 bg-slate-800/90 py-3 pl-11 pr-11 text-sm text-white placeholder-slate-500 transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 sm:text-base"
                           />
                           <button
                             type="button"
                             onClick={() => setShowPassword((v) => !v)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-500 transition hover:bg-slate-700/60 hover:text-slate-300"
+                            aria-label={
+                              showPassword ? "Ascunde parola" : "Arată parola"
+                            }
                           >
                             {showPassword ? (
                               <EyeOff className="h-5 w-5" />
@@ -318,18 +328,18 @@ export default function Login() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <label className="flex items-center gap-2 text-sm text-slate-400">
                           <input
                             type="checkbox"
                             className="rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-900"
                           />
-                          Ține-mă minte
+                          <span>Ține-mă minte</span>
                         </label>
 
                         <Link
                           to="/forgot-password"
-                          className="text-sm text-cyan-400 hover:text-cyan-300"
+                          className="text-sm font-medium text-cyan-400 hover:text-cyan-300"
                         >
                           Ai uitat parola?
                         </Link>
@@ -338,7 +348,7 @@ export default function Login() {
                       <button
                         type="submit"
                         disabled={loading}
-                        className="flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-3 font-semibold text-white shadow-lg shadow-cyan-500/30 transition hover:shadow-cyan-500/50 disabled:cursor-not-allowed disabled:opacity-70"
+                        className="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-3 font-semibold text-white shadow-lg shadow-cyan-500/30 transition hover:shadow-cyan-500/50 disabled:cursor-not-allowed disabled:opacity-70"
                       >
                         {loading ? "Se procesează..." : "Conectare"}
                         {!loading && <ArrowRight className="ml-2 h-5 w-5" />}
@@ -356,20 +366,22 @@ export default function Login() {
                       </div>
                     </div>
 
-                    <div className="flex justify-center">
-                      <GoogleSignInButton
-                        onSuccess={handleGoogleSuccess}
-                        onNeedsVerification={handleGoogleNeedsVerification}
-                        onError={handleGoogleError}
-                      />
-                    </div>
+                    <center>
+                      <div className="flex w-full justify-center overflow-hidden [&>*]:max-w-full">
+                        <GoogleSignInButton
+                          onSuccess={handleGoogleSuccess}
+                          onNeedsVerification={handleGoogleNeedsVerification}
+                          onError={handleGoogleError}
+                        />
+                      </div>
+                    </center>
                   </div>
                 )}
 
                 {activeTab === "register" && (
-                  <div className="space-y-6">
+                  <div className="space-y-5 sm:space-y-6">
                     <div>
-                      <h2 className="mb-2 text-2xl font-bold text-white">
+                      <h2 className="mb-1 text-xl font-bold text-white sm:mb-2 sm:text-2xl">
                         Creează cont nou
                       </h2>
                       <p className="text-sm text-slate-400">
@@ -386,6 +398,7 @@ export default function Login() {
                           <User className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
                           <input
                             type="text"
+                            autoComplete="name"
                             placeholder="Alex Ionescu"
                             value={registerForm.name}
                             onChange={(e) =>
@@ -394,7 +407,7 @@ export default function Login() {
                                 name: e.target.value,
                               })
                             }
-                            className="w-full rounded-lg border border-slate-700 bg-slate-800 py-3 pl-11 pr-4 text-white placeholder-slate-500 transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                            className="w-full min-w-0 rounded-xl border border-slate-700 bg-slate-800/90 py-3 pl-11 pr-4 text-sm text-white placeholder-slate-500 transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 sm:text-base"
                           />
                         </div>
                       </div>
@@ -407,6 +420,7 @@ export default function Login() {
                           <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
                           <input
                             type="email"
+                            autoComplete="email"
                             placeholder="alex@example.com"
                             value={registerForm.email}
                             onChange={(e) =>
@@ -415,7 +429,7 @@ export default function Login() {
                                 email: e.target.value,
                               })
                             }
-                            className="w-full rounded-lg border border-slate-700 bg-slate-800 py-3 pl-11 pr-4 text-white placeholder-slate-500 transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                            className="w-full min-w-0 rounded-xl border border-slate-700 bg-slate-800/90 py-3 pl-11 pr-4 text-sm text-white placeholder-slate-500 transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 sm:text-base"
                           />
                         </div>
                       </div>
@@ -428,6 +442,7 @@ export default function Login() {
                           <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
                           <input
                             type={showRegisterPassword ? "text" : "password"}
+                            autoComplete="new-password"
                             placeholder="••••••••"
                             value={registerForm.password}
                             onChange={(e) =>
@@ -436,12 +451,17 @@ export default function Login() {
                                 password: e.target.value,
                               })
                             }
-                            className="w-full rounded-lg border border-slate-700 bg-slate-800 py-3 pl-11 pr-11 text-white placeholder-slate-500 transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                            className="w-full min-w-0 rounded-xl border border-slate-700 bg-slate-800/90 py-3 pl-11 pr-11 text-sm text-white placeholder-slate-500 transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 sm:text-base"
                           />
                           <button
                             type="button"
                             onClick={() => setShowRegisterPassword((v) => !v)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-slate-500 transition hover:bg-slate-700/60 hover:text-slate-300"
+                            aria-label={
+                              showRegisterPassword
+                                ? "Ascunde parola"
+                                : "Arată parola"
+                            }
                           >
                             {showRegisterPassword ? (
                               <EyeOff className="h-5 w-5" />
@@ -455,8 +475,9 @@ export default function Login() {
                         </p>
                       </div>
 
-                      <label className="flex items-start gap-2 text-sm text-slate-400">
+                      <div className="flex items-start gap-2 text-sm text-slate-400">
                         <input
+                          id="acceptedTerms"
                           type="checkbox"
                           checked={registerForm.acceptedTerms}
                           onChange={(e) =>
@@ -467,28 +488,33 @@ export default function Login() {
                           }
                           className="mt-0.5 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-900"
                         />
-                        <span>
+                        <label
+                          htmlFor="acceptedTerms"
+                          className="min-w-0 leading-relaxed"
+                        >
                           Sunt de acord cu{" "}
-                          <button
-                            type="button"
-                            className="text-cyan-400 hover:text-cyan-300"
+                          <Link
+                            to="/info#terms"
+                            className="font-medium text-cyan-400 hover:text-cyan-300"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             Termenii și Condițiile
-                          </button>{" "}
+                          </Link>{" "}
                           și{" "}
-                          <button
-                            type="button"
-                            className="text-cyan-400 hover:text-cyan-300"
+                          <Link
+                            to="/info#privacy"
+                            className="font-medium text-cyan-400 hover:text-cyan-300"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             Politica de Confidențialitate
-                          </button>
-                        </span>
-                      </label>
+                          </Link>
+                        </label>
+                      </div>
 
                       <button
                         type="submit"
                         disabled={loading}
-                        className="flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-3 font-semibold text-white shadow-lg shadow-cyan-500/30 transition hover:shadow-cyan-500/50 disabled:cursor-not-allowed disabled:opacity-70"
+                        className="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-3 font-semibold text-white shadow-lg shadow-cyan-500/30 transition hover:shadow-cyan-500/50 disabled:cursor-not-allowed disabled:opacity-70"
                       >
                         {loading ? "Se procesează..." : "Creează cont"}
                         {!loading && <ArrowRight className="ml-2 h-5 w-5" />}
@@ -506,32 +532,34 @@ export default function Login() {
                       </div>
                     </div>
 
-                    <div className="flex justify-center">
-                      <GoogleSignInButton
-                        onSuccess={handleGoogleSuccess}
-                        onNeedsVerification={handleGoogleNeedsVerification}
-                        onError={handleGoogleError}
-                      />
-                    </div>
+                    <center>
+                      <div className="flex w-full justify-center overflow-hidden [&>*]:max-w-full">
+                        <GoogleSignInButton
+                          onSuccess={handleGoogleSuccess}
+                          onNeedsVerification={handleGoogleNeedsVerification}
+                          onError={handleGoogleError}
+                        />
+                      </div>
+                    </center>
                   </div>
                 )}
               </div>
 
-              <div className="relative overflow-hidden bg-gradient-to-br from-cyan-500/10 via-blue-500/10 to-purple-500/10 p-8 md:p-10">
+              <div className="relative min-w-0 overflow-hidden border-t border-slate-700/50 bg-gradient-to-br from-cyan-500/10 via-blue-500/10 to-purple-500/10 p-5 sm:p-6 md:p-8 lg:border-l lg:border-t-0 lg:p-10">
                 <div className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-cyan-500/20 blur-3xl" />
                 <div className="absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-purple-500/20 blur-3xl" />
 
-                <div className="relative space-y-8">
+                <div className="relative space-y-6 sm:space-y-8">
                   <div>
-                    <h3 className="mb-2 text-2xl font-bold text-white">
+                    <h3 className="mb-2 text-xl font-bold text-white sm:text-2xl">
                       De ce ConfigEXP?
                     </h3>
-                    <p className="text-slate-400">
+                    <p className="text-sm leading-relaxed text-slate-400 sm:text-base">
                       Platforma ta completă pentru configurarea PC-ului perfect
                     </p>
                   </div>
 
-                  <div className="space-y-6">
+                  <div className="space-y-4 sm:space-y-5">
                     {featureItems.map((feature, index) => {
                       const Icon = feature.icon;
 
@@ -541,19 +569,19 @@ export default function Login() {
                           initial={{ opacity: 0, x: 20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: 0.15 + index * 0.08 }}
-                          className="flex gap-4"
+                          className="flex gap-3 sm:gap-4"
                         >
                           <div
-                            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-r ${feature.iconBg}`}
+                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-r ${feature.iconBg} sm:h-12 sm:w-12`}
                           >
-                            <Icon className={`h-6 w-6 ${feature.iconColor}`} />
+                            <Icon className={`h-5 w-5 sm:h-6 sm:w-6 ${feature.iconColor}`} />
                           </div>
 
-                          <div>
+                          <div className="min-w-0">
                             <h4 className="mb-1 font-semibold text-white">
                               {feature.title}
                             </h4>
-                            <p className="text-sm text-slate-400">
+                            <p className="text-sm leading-relaxed text-slate-400">
                               {feature.description}
                             </p>
                           </div>
@@ -562,7 +590,7 @@ export default function Login() {
                     })}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 pt-8">
+                  <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-2 sm:gap-4 sm:pt-4">
                     <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-4 backdrop-blur-sm">
                       <div className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-2xl font-bold text-transparent">
                         50,000+

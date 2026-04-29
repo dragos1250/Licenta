@@ -178,10 +178,10 @@ export default function InfoPage() {
           <p className="text-slate-400">
             Trimite CV-ul la{" "}
             <a
-              href="mailto:careers@configexp.ro"
+              href="mailto:configexp.app@gmail.com"
               className="text-cyan-400 hover:text-cyan-300"
             >
-              careers@configexp.ro
+              configexp.app@gmail.com
             </a>
           </p>
         </Section>
@@ -221,10 +221,10 @@ export default function InfoPage() {
               <Mail className="mb-2 h-5 w-5 text-cyan-400" />
               <h4 className="mb-1 font-semibold text-white">Email</h4>
               <a
-                href="mailto:support@configexp.ro"
+                href="mailto:configexp.app@gmail.com"
                 className="text-sm text-cyan-400 hover:text-cyan-300"
               >
-                support@configexp.ro
+                configexp.app@gmail.com
               </a>
               <p className="mt-1 text-xs text-slate-500">Răspuns în 24h</p>
             </div>
@@ -511,10 +511,10 @@ export default function InfoPage() {
           <p className="text-slate-400">
             Pentru exercitarea drepturilor tale GDPR, contactează-ne la{" "}
             <a
-              href="mailto:gdpr@configexp.ro"
+              href="mailto:configexp.app@gmail.com"
               className="text-cyan-400 hover:text-cyan-300"
             >
-              gdpr@configexp.ro
+              configexp.app@gmail.com
             </a>
           </p>
         </Section>
@@ -620,10 +620,10 @@ export default function InfoPage() {
                 Pentru întrebări generale și suport:
               </p>
               <a
-                href="mailto:contact@configexp.ro"
+                href="mailto:configexp.app@gmail.com"
                 className="font-medium text-cyan-400 hover:text-cyan-300"
               >
-                contact@configexp.ro
+                configexp.app@gmail.com
               </a>
             </div>
 
@@ -669,10 +669,10 @@ export default function InfoPage() {
           <p className="text-slate-400">
             Pentru materiale de presă și colaborări media, contactează-ne la{" "}
             <a
-              href="mailto:press@configexp.ro"
+              href="mailto:configexp.app@gmail.com"
               className="text-cyan-400 hover:text-cyan-300"
             >
-              press@configexp.ro
+              configexp.app@gmail.com
             </a>
           </p>
         </Section>
