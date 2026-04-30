@@ -1,15 +1,13 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
-function createTransporter() {
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: Number(process.env.SMTP_PORT) === 465,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
+function createResendClient() {
+  const apiKey = process.env.RESEND_API_KEY;
+
+  if (!apiKey) {
+    return null;
+  }
+
+  return new Resend(apiKey);
 }
 
 function escapeHtml(value) {
@@ -134,9 +132,7 @@ function getClientUrl() {
 
 function buildProductUrl(product) {
   if (!product?.id) return getClientUrl();
-
-  // Dacă ruta ta reală este alta, schimbă doar linia asta.
-  return `${getClientUrl()}/product/${product.id}`;
+  return `${getClientUrl()}/products/${product.id}`;
 }
 
 function productCardHtml(product) {
@@ -177,14 +173,7 @@ function contentBoxHtml(label, value) {
   `;
 }
 
-function baseEmailHtml({
-  title,
-  greetingName,
-  intro,
-  product,
-  contentLabel,
-  content,
-}) {
+function baseEmailHtml({ title, greetingName, intro, product, contentLabel, content }) {
   const displayName = escapeHtml(greetingName || "utilizator");
 
   return `
@@ -213,15 +202,44 @@ function baseEmailHtml({
 
 export class Mailer {
   constructor() {
-    this.transporter = createTransporter();
-    this.from = process.env.MAIL_FROM;
+    this.resend = createResendClient();
+    this.from = process.env.MAIL_FROM || "ConfigEXP <onboarding@resend.dev>";
+  }
+
+  async sendMail({ from, to, subject, html, text }) {
+    if (!this.resend) {
+      throw new Error("RESEND_API_KEY lipsește din environment variables.");
+    }
+
+    if (!to) {
+      throw new Error("Destinatarul emailului lipsește.");
+    }
+
+    const { data, error } = await this.resend.emails.send({
+      from: from || this.from,
+      to,
+      subject,
+      html,
+      text,
+    });
+
+    if (error) {
+      const message =
+        typeof error === "string"
+          ? error
+          : error?.message || JSON.stringify(error);
+
+      throw new Error(message || "Resend nu a putut trimite emailul.");
+    }
+
+    return data;
   }
 
   async sendVerificationEmail({ to, name, verificationUrl }) {
     const displayName = escapeHtml(name || "utilizator");
     const safeVerificationUrl = escapeHtml(verificationUrl);
 
-    await this.transporter.sendMail({
+    await this.sendMail({
       from: this.from,
       to,
       subject: "Confirmă-ți contul",
@@ -261,7 +279,7 @@ export class Mailer {
     const displayName = escapeHtml(name || "utilizator");
     const safeResetUrl = escapeHtml(resetUrl);
 
-    await this.transporter.sendMail({
+    await this.sendMail({
       from: this.from,
       to,
       subject: "Resetează-ți parola",
@@ -299,7 +317,7 @@ export class Mailer {
   }
 
   async sendReviewSubmittedForModerationEmail({ to, name, product, review }) {
-    await this.transporter.sendMail({
+    await this.sendMail({
       from: this.from,
       to,
       subject: "Review-ul tău a fost trimis către moderare",
@@ -316,7 +334,7 @@ export class Mailer {
   }
 
   async sendReviewApprovedEmail({ to, name, product, review }) {
-    await this.transporter.sendMail({
+    await this.sendMail({
       from: this.from,
       to,
       subject: "Review-ul tău a fost publicat",
@@ -332,31 +350,8 @@ export class Mailer {
     });
   }
 
-  async sendReviewRejectedEmail({ to, name, product, review }) {
-    await this.transporter.sendMail({
-      from: this.from,
-      to,
-      subject: "Review-ul tău nu a fost aprobat",
-      html:
-        baseEmailHtml({
-          title: "Review respins",
-          greetingName: name,
-          intro:
-            "Review-ul tău a fost verificat de un administrator, dar nu a putut fi publicat pe site.",
-          product,
-          contentLabel: review?.title || "Review-ul trimis",
-          content: review?.content,
-        }) +
-        contentBoxHtml(
-          "Motiv respingere",
-          review?.rejectionReason ||
-            "Conținutul nu respectă regulile de publicare."
-        ),
-    });
-  }
-
   async sendQuestionSubmittedForModerationEmail({ to, name, product, question }) {
-    await this.transporter.sendMail({
+    await this.sendMail({
       from: this.from,
       to,
       subject: "Întrebarea ta a fost trimisă către moderare",
@@ -373,7 +368,7 @@ export class Mailer {
   }
 
   async sendQuestionApprovedEmail({ to, name, product, question }) {
-    await this.transporter.sendMail({
+    await this.sendMail({
       from: this.from,
       to,
       subject: "Întrebarea ta a fost publicată",
@@ -389,110 +384,54 @@ export class Mailer {
     });
   }
 
-  async sendQuestionRejectedEmail({ to, name, product, question }) {
-    await this.transporter.sendMail({
-      from: this.from,
-      to,
-      subject: "Întrebarea ta nu a fost aprobată",
-      html:
-        baseEmailHtml({
-          title: "Întrebare respinsă",
-          greetingName: name,
-          intro:
-            "Întrebarea ta a fost verificată de un administrator, dar nu a putut fi publicată pe site.",
-          product,
-          contentLabel: "Întrebarea trimisă",
-          content: question?.question,
-        }) +
-        contentBoxHtml(
-          "Motiv respingere",
-          question?.rejectionReason ||
-            "Conținutul nu respectă regulile de publicare."
-        ),
-    });
-  }
-
-  async sendAnswerSubmittedForModerationEmail({
-    to,
-    name,
-    product,
-    question,
-    answer,
-  }) {
-    await this.transporter.sendMail({
+  async sendAnswerSubmittedForModerationEmail({ to, name, product, question, answer }) {
+    await this.sendMail({
       from: this.from,
       to,
       subject: "Răspunsul tău a fost trimis către moderare",
-      html:
-        baseEmailHtml({
-          title: "Răspuns trimis către moderare",
-          greetingName: name,
-          intro:
-            "Am primit răspunsul tău. Acesta va fi verificat de un administrator înainte să apară public pe site.",
-          product,
-          contentLabel: "Răspunsul tău",
-          content: answer?.answer,
-        }) + contentBoxHtml("Întrebarea la care ai răspuns", question?.question),
+      html: baseEmailHtml({
+        title: "Răspuns trimis către moderare",
+        greetingName: name,
+        intro:
+          "Am primit răspunsul tău. Acesta va fi verificat de un administrator înainte să apară public pe site.",
+        product,
+        contentLabel: "Răspunsul tău",
+        content: answer?.answer,
+      }) + contentBoxHtml("Întrebarea la care ai răspuns", question?.question),
     });
   }
 
   async sendAnswerApprovedEmail({ to, name, product, question, answer }) {
-    await this.transporter.sendMail({
+    await this.sendMail({
       from: this.from,
       to,
       subject: "Răspunsul tău a fost publicat",
-      html:
-        baseEmailHtml({
-          title: "Răspuns publicat",
-          greetingName: name,
-          intro:
-            "Răspunsul tău a fost aprobat și este acum vizibil pe pagina produsului.",
-          product,
-          contentLabel: "Răspunsul publicat",
-          content: answer?.answer,
-        }) + contentBoxHtml("Întrebarea", question?.question),
-    });
-  }
-
-  async sendAnswerRejectedEmail({ to, name, product, question, answer }) {
-    await this.transporter.sendMail({
-      from: this.from,
-      to,
-      subject: "Răspunsul tău nu a fost aprobat",
-      html:
-        baseEmailHtml({
-          title: "Răspuns respins",
-          greetingName: name,
-          intro:
-            "Răspunsul tău a fost verificat de un administrator, dar nu a putut fi publicat pe site.",
-          product,
-          contentLabel: "Răspunsul trimis",
-          content: answer?.answer,
-        }) +
-        contentBoxHtml("Întrebarea", question?.question) +
-        contentBoxHtml(
-          "Motiv respingere",
-          answer?.rejectionReason ||
-            "Conținutul nu respectă regulile de publicare."
-        ),
+      html: baseEmailHtml({
+        title: "Răspuns publicat",
+        greetingName: name,
+        intro:
+          "Răspunsul tău a fost aprobat și este acum vizibil pe pagina produsului.",
+        product,
+        contentLabel: "Răspunsul publicat",
+        content: answer?.answer,
+      }) + contentBoxHtml("Întrebarea", question?.question),
     });
   }
 
   async sendQuestionAnsweredEmail({ to, name, product, question, answer }) {
-    await this.transporter.sendMail({
+    await this.sendMail({
       from: this.from,
       to,
       subject: "Ai primit un răspuns la întrebarea ta",
-      html:
-        baseEmailHtml({
-          title: "Ai primit un răspuns",
-          greetingName: name,
-          intro:
-            "Întrebarea ta a primit un răspuns. Îl poți vedea și pe pagina produsului.",
-          product,
-          contentLabel: "Răspuns primit",
-          content: answer?.answer,
-        }) + contentBoxHtml("Întrebarea ta", question?.question),
+      html: baseEmailHtml({
+        title: "Ai primit un răspuns",
+        greetingName: name,
+        intro:
+          "Întrebarea ta a primit un răspuns. Îl poți vedea și pe pagina produsului.",
+        product,
+        contentLabel: "Răspuns primit",
+        content: answer?.answer,
+      }) + contentBoxHtml("Întrebarea ta", question?.question),
     });
   }
 
@@ -510,9 +449,7 @@ export class Mailer {
                     ${escapeHtml(item.productName || "Produs")}
                   </div>
                   <div style="font-size: 12px; color: #6b7280;">
-                    ${escapeHtml(item.brand || "—")} • ${escapeHtml(
-              item.category || "—"
-            )}
+                    ${escapeHtml(item.brand || "—")} • ${escapeHtml(item.category || "—")}
                   </div>
                 </td>
                 <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">
@@ -564,7 +501,7 @@ export class Mailer {
           )}</p>
         `;
 
-    await this.transporter.sendMail({
+    await this.sendMail({
       from: this.from,
       to,
       subject: `Confirmare comandă ${order.orderNumber || ""}`.trim(),
@@ -672,7 +609,7 @@ export class Mailer {
           )}, ${escapeHtml(order.shippingCounty || "—")}</p>
         `;
 
-    await this.transporter.sendMail({
+    await this.sendMail({
       from: this.from,
       to,
       subject: meta.subject,
