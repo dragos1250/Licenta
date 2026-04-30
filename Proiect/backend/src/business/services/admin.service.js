@@ -128,8 +128,21 @@ export class AdminService {
     }
   }
 
+  queueEmailSafe(methodName, payload) {
+    void this.sendEmailSafe(methodName, payload).catch((error) => {
+      console.error(`Eroare neașteptată la emailul ${methodName}:`, error);
+    });
+  }
+
   async sendOrderStatusUpdateEmailSafe(order) {
-    await this.sendEmailSafe("sendOrderStatusUpdateEmail", {
+    this.queueEmailSafe("sendOrderStatusUpdateEmail", {
+      to: order?.customerEmail,
+      order,
+    });
+  }
+
+  queueOrderStatusUpdateEmailSafe(order) {
+    this.queueEmailSafe("sendOrderStatusUpdateEmail", {
       to: order?.customerEmail,
       order,
     });
@@ -380,7 +393,7 @@ export class AdminService {
     });
 
     if (updatedOrder.status !== previousStatus) {
-      await this.sendOrderStatusUpdateEmailSafe(updatedOrder);
+      this.queueOrderStatusUpdateEmailSafe(updatedOrder);
     }
 
     return updatedOrder;
@@ -868,7 +881,7 @@ export class AdminService {
       return updatedReview;
     });
 
-    await this.sendEmailSafe("sendReviewApprovedEmail", {
+    this.queueEmailSafe("sendReviewApprovedEmail", {
       to: review.user?.email,
       name: review.user?.name || review.authorName,
       product: review.product,
@@ -927,7 +940,7 @@ export class AdminService {
       return updatedReview;
     });
 
-    await this.sendEmailSafe("sendReviewRejectedEmail", {
+    this.queueEmailSafe("sendReviewRejectedEmail", {
       to: review.user?.email,
       name: review.user?.name || review.authorName,
       product: review.product,
@@ -978,7 +991,7 @@ export class AdminService {
       },
     });
 
-    await this.sendEmailSafe("sendQuestionApprovedEmail", {
+    this.queueEmailSafe("sendQuestionApprovedEmail", {
       to: question.user?.email,
       name: question.user?.name || question.authorName,
       product: question.product,
@@ -1029,7 +1042,7 @@ export class AdminService {
       },
     });
 
-    await this.sendEmailSafe("sendQuestionRejectedEmail", {
+    this.queueEmailSafe("sendQuestionRejectedEmail", {
       to: question.user?.email,
       name: question.user?.name || question.authorName,
       product: question.product,
@@ -1151,7 +1164,7 @@ export class AdminService {
     });
 
     if (result.question?.user?.email && result.question.userId !== adminUserId) {
-      await this.sendEmailSafe("sendQuestionAnsweredEmail", {
+      this.queueEmailSafe("sendQuestionAnsweredEmail", {
         to: result.question.user.email,
         name: result.question.user.name || result.question.authorName,
         product: result.question.product,
@@ -1219,7 +1232,7 @@ export class AdminService {
       },
     });
 
-    await this.sendEmailSafe("sendAnswerApprovedEmail", {
+    this.queueEmailSafe("sendAnswerApprovedEmail", {
       to: answer.user?.email,
       name: answer.user?.name || answer.authorName,
       product: answer.question?.product,
@@ -1231,7 +1244,7 @@ export class AdminService {
       answer.question?.user?.email &&
       answer.question.userId !== answer.user?.id
     ) {
-      await this.sendEmailSafe("sendQuestionAnsweredEmail", {
+      this.queueEmailSafe("sendQuestionAnsweredEmail", {
         to: answer.question.user.email,
         name: answer.question.user.name || answer.question.authorName,
         product: answer.question.product,
@@ -1290,7 +1303,7 @@ export class AdminService {
       },
     });
 
-    await this.sendEmailSafe("sendAnswerRejectedEmail", {
+    this.queueEmailSafe("sendAnswerRejectedEmail", {
       to: answer.user?.email,
       name: answer.user?.name || answer.authorName,
       product: answer.question?.product,
