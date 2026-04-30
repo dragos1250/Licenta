@@ -205,7 +205,7 @@ export class OrdersService {
       if (!this.mailer?.sendOrderConfirmationEmail) return;
       if (!order?.customerEmail) return;
 
-      await this.mailer.sendOrderConfirmationEmail({
+      this.mailer.sendOrderConfirmationEmail({
         to: order.customerEmail,
         order,
       });
