@@ -21,6 +21,7 @@ import {
 import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { resolveProductImage } from "../lib/resolveProductImage";
+import Seo from "../components/Seo";
 
 const GUEST_CART_KEY = "configexp_guest_cart_v1";
 const GUEST_WISHLIST_KEY = "configexp_guest_wishlist_v1";
@@ -819,7 +820,19 @@ export default function ProductDetail() {
     resolveProductImage(getPrimaryRawImageValue(product));
 
   return (
-    <div className="min-h-screen overflow-x-hidden px-4 py-6 sm:px-6 sm:py-8">
+    <>
+      <Seo
+        title={product.name || "Produs"}
+        description={
+          product.shortDescription ||
+          product.description ||
+          `Vezi detalii, specificații, preț și disponibilitate pentru ${product.name || "acest produs"} pe ConfigEXP.`
+        }
+        image={currentImage}
+        type="product"
+      />
+
+      <div className="min-h-screen overflow-x-hidden px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-7xl">
         {toast && (
           <div className="mb-6 rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-200">
@@ -1791,6 +1804,7 @@ export default function ProductDetail() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

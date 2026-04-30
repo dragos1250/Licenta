@@ -18,6 +18,90 @@ const ALLOWED_SHIPPING_METHODS = [
 
 const ALLOWED_PAYMENT_METHODS = ["CARD", "CASH_ON_DELIVERY"];
 
+function normalizeJsonStringArray(value) {
+  if (!Array.isArray(value)) return null;
+
+  const normalized = value
+    .map((item) => String(item || "").trim())
+    .filter(Boolean);
+
+  return normalized.length ? normalized : null;
+}
+
+function normalizeProductSpecifications(value) {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((spec, index) => ({
+      name: String(spec?.name || "").trim(),
+      value: String(spec?.value || "").trim(),
+      sortOrder: Number.isInteger(Number(spec?.sortOrder))
+        ? Number(spec.sortOrder)
+        : index,
+    }))
+    .filter((spec) => spec.name && spec.value)
+    .map((spec, index) => ({
+      ...spec,
+      sortOrder: index,
+    }));
+}
+
+function getProductInclude() {
+  return {
+    specifications: {
+      orderBy: {
+        sortOrder: "asc",
+      },
+    },
+  };
+}
+
+function normalizeNullableNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : null;
+}
+
+function normalizeNullableText(value) {
+  const text = String(value || "").trim();
+  return text || null;
+}
+
+const CANCELED_STATUS = "CANCELED";
+const DELIVERED_STATUS = "DELIVERED";
+
+function shouldRestoreStock(previousStatus, nextStatus) {
+  return previousStatus !== CANCELED_STATUS && nextStatus === CANCELED_STATUS;
+}
+
+function shouldReserveStockAgain(previousStatus, nextStatus) {
+  return previousStatus === CANCELED_STATUS && nextStatus !== CANCELED_STATUS;
+}
+
+async function incrementOrderItemsStock(tx, items) {
+  for (const item of items) {
+    await tx.product.update({
+      where: { id: item.productId },
+      data: { stock: { increment: item.quantity } },
+    });
+  }
+}
+
+async function decrementOrderItemsStockSafely(tx, items) {
+  for (const item of items) {
+    const result = await tx.product.updateMany({
+      where: { id: item.productId, stock: { gte: item.quantity } },
+      data: { stock: { decrement: item.quantity } },
+    });
+
+    if (result.count !== 1) {
+      throw new Error(
+        `Stoc insuficient pentru reactivarea comenzii: ${item.productName || item.productId}.`
+      );
+    }
+  }
+}
+
 function normalizeRoleName(input) {
   const value = String(input || "").trim().toLowerCase();
   if (!value) return null;
@@ -123,6 +207,15 @@ export class AdminService {
 
       if (!ALLOWED_ORDER_STATUSES.includes(normalizedStatus)) {
         throw new Error("Statusul comenzii este invalid.");
+      }
+
+      if (
+        previousStatus === DELIVERED_STATUS &&
+        normalizedStatus === CANCELED_STATUS
+      ) {
+        throw new Error(
+          "O comandă livrată nu poate fi anulată direct. Folosește un flux separat de retur/stornare."
+        );
       }
 
       data.status = normalizedStatus;
@@ -253,23 +346,37 @@ export class AdminService {
       data.easyboxCity = null;
     }
 
-    const updatedOrder = await prisma.order.update({
-      where: { id: orderId },
-      data,
-      include: {
-        items: {
-          orderBy: {
-            createdAt: "asc",
+    const nextStatus = data.status || previousStatus;
+    const restoreStock = shouldRestoreStock(previousStatus, nextStatus);
+    const reserveStockAgain = shouldReserveStockAgain(previousStatus, nextStatus);
+
+    const updatedOrder = await prisma.$transaction(async (tx) => {
+      if (restoreStock) {
+        await incrementOrderItemsStock(tx, existingOrder.items);
+      }
+
+      if (reserveStockAgain) {
+        await decrementOrderItemsStockSafely(tx, existingOrder.items);
+      }
+
+      return tx.order.update({
+        where: { id: orderId },
+        data,
+        include: {
+          items: {
+            orderBy: {
+              createdAt: "asc",
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
           },
         },
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      });
     });
 
     if (updatedOrder.status !== previousStatus) {
@@ -404,6 +511,7 @@ export class AdminService {
       orderBy: {
         updatedAt: "desc",
       },
+      include: getProductInclude(),
     });
   }
 
@@ -426,6 +534,8 @@ export class AdminService {
 
     const priceRon = Number(payload.priceRon || 0);
     const stock = Number(payload.stock || 0);
+    const originalPriceRon = normalizeNullableNumber(payload.originalPriceRon);
+    const specifications = normalizeProductSpecifications(payload.specifications);
 
     if (!Number.isFinite(priceRon) || priceRon < 0) {
       throw new Error("Prețul produsului este invalid.");
@@ -440,25 +550,26 @@ export class AdminService {
         name,
         brand,
         category,
-        imageUrl: payload.imageUrl ? String(payload.imageUrl).trim() : null,
+        imageUrl: normalizeNullableText(payload.imageUrl),
         priceRon,
-        originalPriceRon:
-          payload.originalPriceRon === null ||
-          payload.originalPriceRon === undefined ||
-          payload.originalPriceRon === ""
-            ? null
-            : Number(payload.originalPriceRon),
+        originalPriceRon,
         stock,
-        badge: payload.badge ? String(payload.badge).trim() : null,
+        badge: normalizeNullableText(payload.badge),
         isActive:
           payload.isActive === undefined ? true : Boolean(payload.isActive),
-        shortDescription: payload.shortDescription
-          ? String(payload.shortDescription).trim()
-          : null,
-        description: payload.description
-          ? String(payload.description).trim()
-          : null,
+        shortDescription: normalizeNullableText(payload.shortDescription),
+        description: normalizeNullableText(payload.description),
+        features: normalizeJsonStringArray(payload.features),
+        pros: normalizeJsonStringArray(payload.pros),
+        cons: normalizeJsonStringArray(payload.cons),
+        specifications:
+          specifications.length > 0
+            ? {
+                create: specifications,
+              }
+            : undefined,
       },
+      include: getProductInclude(),
     });
   }
 
@@ -504,7 +615,7 @@ export class AdminService {
     }
 
     if (payload.imageUrl !== undefined) {
-      data.imageUrl = payload.imageUrl ? String(payload.imageUrl).trim() : null;
+      data.imageUrl = normalizeNullableText(payload.imageUrl);
     }
 
     if (payload.priceRon !== undefined) {
@@ -518,11 +629,7 @@ export class AdminService {
     }
 
     if (payload.originalPriceRon !== undefined) {
-      data.originalPriceRon =
-        payload.originalPriceRon === null ||
-        payload.originalPriceRon === ""
-          ? null
-          : Number(payload.originalPriceRon);
+      data.originalPriceRon = normalizeNullableNumber(payload.originalPriceRon);
     }
 
     if (payload.stock !== undefined) {
@@ -536,7 +643,7 @@ export class AdminService {
     }
 
     if (payload.badge !== undefined) {
-      data.badge = payload.badge ? String(payload.badge).trim() : null;
+      data.badge = normalizeNullableText(payload.badge);
     }
 
     if (payload.isActive !== undefined) {
@@ -544,20 +651,53 @@ export class AdminService {
     }
 
     if (payload.shortDescription !== undefined) {
-      data.shortDescription = payload.shortDescription
-        ? String(payload.shortDescription).trim()
-        : null;
+      data.shortDescription = normalizeNullableText(payload.shortDescription);
     }
 
     if (payload.description !== undefined) {
-      data.description = payload.description
-        ? String(payload.description).trim()
-        : null;
+      data.description = normalizeNullableText(payload.description);
     }
 
-    return prisma.product.update({
-      where: { id: productId },
-      data,
+    if (payload.features !== undefined) {
+      data.features = normalizeJsonStringArray(payload.features);
+    }
+
+    if (payload.pros !== undefined) {
+      data.pros = normalizeJsonStringArray(payload.pros);
+    }
+
+    if (payload.cons !== undefined) {
+      data.cons = normalizeJsonStringArray(payload.cons);
+    }
+
+    const shouldUpdateSpecifications = payload.specifications !== undefined;
+    const specifications = normalizeProductSpecifications(payload.specifications);
+
+    return prisma.$transaction(async (tx) => {
+      if (shouldUpdateSpecifications) {
+        await tx.productSpecification.deleteMany({
+          where: {
+            productId,
+          },
+        });
+
+        if (specifications.length > 0) {
+          await tx.productSpecification.createMany({
+            data: specifications.map((spec) => ({
+              productId,
+              name: spec.name,
+              value: spec.value,
+              sortOrder: spec.sortOrder,
+            })),
+          });
+        }
+      }
+
+      return tx.product.update({
+        where: { id: productId },
+        data,
+        include: getProductInclude(),
+      });
     });
   }
 

@@ -13,6 +13,7 @@ import {
 import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import GoogleSignInButton from "../components/GoogleSignInButton";
+import Seo from "../components/Seo";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -183,7 +184,18 @@ export default function Login() {
   ];
 
   return (
-    <div className="relative min-h-[calc(100vh-80px)] overflow-x-hidden px-4 py-8 sm:px-6 sm:py-12">
+    <>
+      <Seo
+        title={activeTab === "register" ? "Înregistrare" : "Autentificare"}
+        description={
+          activeTab === "register"
+            ? "Creează un cont ConfigEXP pentru a salva wishlist-uri, configurații PC și comenzi."
+            : "Autentifică-te în contul tău ConfigEXP pentru a accesa wishlist-ul, comenzile și configurațiile salvate."
+        }
+        noIndex
+      />
+
+      <div className="relative min-h-[calc(100vh-80px)] overflow-x-hidden px-4 py-8 sm:px-6 sm:py-12">
       <div className="absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute left-1/2 top-10 h-72 w-72 -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl sm:left-1/4 sm:top-1/4 sm:h-96 sm:w-96" />
         <div className="absolute bottom-0 right-0 h-72 w-72 rounded-full bg-purple-500/10 blur-3xl sm:bottom-1/4 sm:right-1/4 sm:h-96 sm:w-96" />
@@ -615,6 +627,7 @@ export default function Login() {
           </div>
         </motion.div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

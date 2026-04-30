@@ -11,6 +11,7 @@ import {
   Lock,
 } from "lucide-react";
 import api from "../lib/api";
+import Seo from "../components/Seo";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -57,7 +58,14 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="relative flex min-h-[calc(100vh-80px)] items-center justify-center px-6 py-12">
+    <>
+      <Seo
+        title="Recuperare parolă"
+        description="Primește un link de resetare pentru parola contului tău ConfigEXP."
+        noIndex
+      />
+
+      <div className="relative flex min-h-[calc(100vh-80px)] items-center justify-center px-6 py-12">
       <div className="absolute inset-0 -z-10">
         <div className="absolute left-1/4 top-1/4 h-96 w-96 rounded-full bg-cyan-500/10 blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 h-96 w-96 rounded-full bg-purple-500/10 blur-3xl" />
@@ -268,6 +276,7 @@ export default function ForgotPasswordPage() {
           </div>
         </motion.div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

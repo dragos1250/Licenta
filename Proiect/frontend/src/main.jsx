@@ -24,20 +24,9 @@ import VerifyEmail from "./pages/VerifyEmail";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
 import ResetPasswordPage from "./pages/ResetPassword.jsx";
 import AIConfiguratorPage from "./pages/AIConfiguratorPage.jsx";
+import OrderConfirmation from "./pages/OrderConfirmation";
+import { HelmetProvider } from "react-helmet-async";
 
-
-function PlaceholderPage({ title }) {
-  return (
-    <div className="mx-auto max-w-7xl px-6 py-16">
-      <div className="rounded-2xl border border-slate-700/50 bg-slate-900/60 p-8">
-        <h1 className="mb-2 text-3xl font-bold text-white">{title}</h1>
-        <p className="text-slate-400">
-          Pagina este în lucru. O voi implementa în pasul următor.
-        </p>
-      </div>
-    </div>
-  );
-}
 
 const router = createBrowserRouter([
   {
@@ -63,12 +52,15 @@ const router = createBrowserRouter([
       { path: "verify-email", element: <VerifyEmail /> },
       { path: "forgot-password", element: <ForgotPasswordPage /> },
       { path: "reset-password", element: <ResetPasswordPage /> },
+      { path: "order-confirmation", element: <OrderConfirmation /> },
     ],
   },
 ]);
 
 createRoot(document.getElementById("root")).render(
-  <AuthProvider>
-    <RouterProvider router={router} />
-  </AuthProvider>
+  <HelmetProvider>
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  </HelmetProvider>
 );

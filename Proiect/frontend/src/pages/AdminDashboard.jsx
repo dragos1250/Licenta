@@ -44,7 +44,6 @@ import {
   Tag,
   Image as ImageIcon,
   MessageSquare,
-  Send,
 } from "lucide-react";
 import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
@@ -132,6 +131,32 @@ function Modal({ title, subtitle, children, onClose, maxWidth = "max-w-4xl" }) {
         </div>
 
         {children}
+      </div>
+    </div>
+  );
+}
+
+function ModalFeedback({ success, error }) {
+  if (!success && !error) return null;
+
+  const isSuccess = Boolean(success);
+  const message = success || error;
+
+  return (
+    <div
+      className={`mb-5 rounded-xl border px-4 py-3 text-sm ${
+        isSuccess
+          ? "border-green-500/30 bg-green-500/10 text-green-200"
+          : "border-red-500/30 bg-red-500/10 text-red-200"
+      }`}
+    >
+      <div className="flex items-start gap-2">
+        {isSuccess ? (
+          <Check className="mt-0.5 h-4 w-4 flex-shrink-0" />
+        ) : (
+          <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+        )}
+        <span>{message}</span>
       </div>
     </div>
   );
@@ -231,6 +256,56 @@ function pickArray(data, keys = []) {
   }
 
   return [];
+}
+
+
+function jsonArrayToText(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean).join("\n");
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item) => String(item || "").trim())
+          .filter(Boolean)
+          .join("\n");
+      }
+    } catch {
+      return value;
+    }
+  }
+
+  return "";
+}
+
+function textToJsonArray(value) {
+  return String(value || "")
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeProductSpecificationsForForm(specifications) {
+  if (!Array.isArray(specifications)) return [];
+
+  return specifications
+    .map((spec, index) => ({
+      id: spec?.id || `spec-${index}`,
+      name: spec?.name || "",
+      value: spec?.value || "",
+    }))
+    .filter((spec) => spec.name || spec.value);
+}
+
+function getVisibleProductSpecifications(specifications) {
+  if (!Array.isArray(specifications)) return [];
+
+  return specifications.filter((spec) => {
+    return String(spec?.name || "").trim() || String(spec?.value || "").trim();
+  });
 }
 
 function hasAdminRole(source) {
@@ -414,6 +489,10 @@ const emptyProductForm = {
   isActive: true,
   shortDescription: "",
   description: "",
+  featuresText: "",
+  prosText: "",
+  consText: "",
+  specifications: [],
 };
 
 export default function AdminDashboard() {
@@ -424,6 +503,8 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [modalSuccessMsg, setModalSuccessMsg] = useState("");
+  const [modalErrorMsg, setModalErrorMsg] = useState("");
 
   const [ordersRaw, setOrdersRaw] = useState([]);
   const [usersRaw, setUsersRaw] = useState([]);
@@ -458,13 +539,6 @@ export default function AdminDashboard() {
 
   const [moderationActionLoading, setModerationActionLoading] = useState("");
   const [moderationNotice, setModerationNotice] = useState("");
-
-  const [showOfficialAnswerModal, setShowOfficialAnswerModal] = useState(false);
-  const [officialAnswerQuestion, setOfficialAnswerQuestion] = useState(null);
-  const [officialAnswerText, setOfficialAnswerText] = useState("");
-  const [officialAnswerError, setOfficialAnswerError] = useState("");
-  const [officialAnswerBusy, setOfficialAnswerBusy] = useState(false);
-
 
   const isAdmin = useMemo(() => {
     if (profileRoles.length) {
@@ -686,6 +760,12 @@ export default function AdminDashboard() {
         badge: p?.badge || "",
         shortDescription: p?.shortDescription || "",
         description: p?.description || "",
+        features: Array.isArray(p?.features) ? p.features : [],
+        pros: Array.isArray(p?.pros) ? p.pros : [],
+        cons: Array.isArray(p?.cons) ? p.cons : [],
+        specifications: Array.isArray(p?.specifications)
+          ? p.specifications
+          : [],
         priceRon: Number(p?.priceRon || 0),
         originalPriceRon:
           p?.originalPriceRon === null || p?.originalPriceRon === undefined
@@ -863,6 +943,22 @@ export default function AdminDashboard() {
     setTimeout(() => setSuccessMsg(""), 2500);
   };
 
+  const clearModalFeedback = () => {
+    setModalSuccessMsg("");
+    setModalErrorMsg("");
+  };
+
+  const setModalSuccess = (message) => {
+    setModalErrorMsg("");
+    setModalSuccessMsg(message);
+    setGlobalSuccess(message);
+  };
+
+  const setModalError = (message) => {
+    setModalSuccessMsg("");
+    setModalErrorMsg(message);
+  };
+
   const getOrderPayload = () => {
     const payload = {
       status: orderEditForm.status,
@@ -935,7 +1031,41 @@ export default function AdminDashboard() {
       isActive: product?.isActive !== false,
       shortDescription: product?.shortDescription || "",
       description: product?.description || "",
+      featuresText: jsonArrayToText(product?.features),
+      prosText: jsonArrayToText(product?.pros),
+      consText: jsonArrayToText(product?.cons),
+      specifications: normalizeProductSpecificationsForForm(product?.specifications),
     });
+  };
+
+  const handleProductSpecChange = (index, field, value) => {
+    setProductForm((prev) => ({
+      ...prev,
+      specifications: prev.specifications.map((spec, specIndex) =>
+        specIndex === index ? { ...spec, [field]: value } : spec
+      ),
+    }));
+  };
+
+  const addProductSpecRow = () => {
+    setProductForm((prev) => ({
+      ...prev,
+      specifications: [
+        ...prev.specifications,
+        {
+          id: `new-spec-${Date.now()}`,
+          name: "",
+          value: "",
+        },
+      ],
+    }));
+  };
+
+  const removeProductSpecRow = (index) => {
+    setProductForm((prev) => ({
+      ...prev,
+      specifications: prev.specifications.filter((_, specIndex) => specIndex !== index),
+    }));
   };
 
   const getProductPayload = () => ({
@@ -953,6 +1083,16 @@ export default function AdminDashboard() {
     isActive: Boolean(productForm.isActive),
     shortDescription: productForm.shortDescription || null,
     description: productForm.description || null,
+    features: textToJsonArray(productForm.featuresText),
+    pros: textToJsonArray(productForm.prosText),
+    cons: textToJsonArray(productForm.consText),
+    specifications: getVisibleProductSpecifications(productForm.specifications).map(
+      (spec, index) => ({
+        name: String(spec.name || "").trim(),
+        value: String(spec.value || "").trim(),
+        sortOrder: index,
+      })
+    ),
   });
 
   const openOrderDetailsModal = async (orderId) => {
@@ -974,6 +1114,7 @@ export default function AdminDashboard() {
 
   const openOrderEditModal = async (orderId) => {
     setErrorMsg("");
+    clearModalFeedback();
 
     try {
       setOrderBusy(true);
@@ -995,6 +1136,7 @@ export default function AdminDashboard() {
     if (!selectedOrder?.id) return;
 
     setErrorMsg("");
+    clearModalFeedback();
 
     try {
       setOrderBusy(true);
@@ -1002,14 +1144,14 @@ export default function AdminDashboard() {
       const updatedOrder = res.data || null;
       setSelectedOrder(updatedOrder);
       fillOrderEditForm(updatedOrder);
-      setGlobalSuccess("Comanda a fost actualizată cu succes.");
+      setModalSuccess("Comanda a fost actualizată cu succes.");
       await fetchDashboardData();
     } catch (e) {
-      setErrorMsg(
+      const message =
         e?.response?.data?.error ||
-          e?.response?.data?.details?.[0]?.message ||
-          "Nu am putut salva comanda."
-      );
+        e?.response?.data?.details?.[0]?.message ||
+        "Nu am putut salva comanda.";
+      setModalError(message);
     } finally {
       setOrderBusy(false);
     }
@@ -1021,6 +1163,7 @@ export default function AdminDashboard() {
   };
 
   const openUserEditModal = (targetUser) => {
+    clearModalFeedback();
     setSelectedUser(targetUser);
     fillUserEditForm(targetUser);
     setShowUserEditModal(true);
@@ -1030,6 +1173,7 @@ export default function AdminDashboard() {
     if (!selectedUser?.id) return;
 
     setErrorMsg("");
+    clearModalFeedback();
 
     try {
       setUserBusy(true);
@@ -1042,14 +1186,14 @@ export default function AdminDashboard() {
         roleName: userEditForm.roleName,
       });
 
-      setGlobalSuccess("Utilizatorul a fost actualizat cu succes.");
+      setModalSuccess("Utilizatorul a fost actualizat cu succes.");
       await fetchDashboardData();
     } catch (e) {
-      setErrorMsg(
+      const message =
         e?.response?.data?.error ||
-          e?.response?.data?.details?.[0]?.message ||
-          "Nu am putut salva utilizatorul."
-      );
+        e?.response?.data?.details?.[0]?.message ||
+        "Nu am putut salva utilizatorul.";
+      setModalError(message);
     } finally {
       setUserBusy(false);
     }
@@ -1061,12 +1205,14 @@ export default function AdminDashboard() {
   };
 
   const openProductEditModal = (product) => {
+    clearModalFeedback();
     setSelectedProduct(product);
     fillProductForm(product);
     setShowProductEditModal(true);
   };
 
   const openCreateProductModal = () => {
+    clearModalFeedback();
     setSelectedProduct(null);
     setProductForm(emptyProductForm);
     setShowCreateProductModal(true);
@@ -1076,18 +1222,19 @@ export default function AdminDashboard() {
     if (!selectedProduct?.id) return;
 
     setErrorMsg("");
+    clearModalFeedback();
 
     try {
       setProductBusy(true);
       await api.patch(`/admin/products/${selectedProduct.id}`, getProductPayload());
-      setGlobalSuccess("Produsul a fost actualizat cu succes.");
+      setModalSuccess("Produsul a fost actualizat cu succes.");
       await fetchDashboardData();
     } catch (e) {
-      setErrorMsg(
+      const message =
         e?.response?.data?.error ||
-          e?.response?.data?.details?.[0]?.message ||
-          "Nu am putut salva produsul."
-      );
+        e?.response?.data?.details?.[0]?.message ||
+        "Nu am putut salva produsul.";
+      setModalError(message);
     } finally {
       setProductBusy(false);
     }
@@ -1095,20 +1242,20 @@ export default function AdminDashboard() {
 
   const handleCreateProduct = async () => {
     setErrorMsg("");
+    clearModalFeedback();
 
     try {
       setProductBusy(true);
       await api.post("/admin/products", getProductPayload());
-      setGlobalSuccess("Produsul a fost adăugat cu succes.");
+      setModalSuccess("Produsul a fost adăugat cu succes.");
       await fetchDashboardData();
-      setShowCreateProductModal(false);
       setProductForm(emptyProductForm);
     } catch (e) {
-      setErrorMsg(
+      const message =
         e?.response?.data?.error ||
-          e?.response?.data?.details?.[0]?.message ||
-          "Nu am putut crea produsul."
-      );
+        e?.response?.data?.details?.[0]?.message ||
+        "Nu am putut crea produsul.";
+      setModalError(message);
     } finally {
       setProductBusy(false);
     }
@@ -1124,6 +1271,7 @@ export default function AdminDashboard() {
       setModerationActionLoading(`review-approve-${reviewId}`);
       await api.patch(`/admin/reviews/${reviewId}/approve`);
       setModerationNotice("Review-ul a fost aprobat.");
+      setGlobalSuccess("Review-ul a fost aprobat.");
       await fetchDashboardData();
     } catch (e) {
       setErrorMsg(e?.response?.data?.error || "Nu am putut aproba review-ul.");
@@ -1147,6 +1295,7 @@ export default function AdminDashboard() {
         reason,
       });
       setModerationNotice("Review-ul a fost respins.");
+      setGlobalSuccess("Review-ul a fost respins.");
       await fetchDashboardData();
     } catch (e) {
       setErrorMsg(e?.response?.data?.error || "Nu am putut respinge review-ul.");
@@ -1165,6 +1314,7 @@ export default function AdminDashboard() {
       setModerationActionLoading(`question-approve-${questionId}`);
       await api.patch(`/admin/questions/${questionId}/approve`);
       setModerationNotice("Întrebarea a fost aprobată.");
+      setGlobalSuccess("Întrebarea a fost aprobată.");
       await fetchDashboardData();
     } catch (e) {
       setErrorMsg(e?.response?.data?.error || "Nu am putut aproba întrebarea.");
@@ -1188,6 +1338,7 @@ export default function AdminDashboard() {
         reason,
       });
       setModerationNotice("Întrebarea a fost respinsă.");
+      setGlobalSuccess("Întrebarea a fost respinsă.");
       await fetchDashboardData();
     } catch (e) {
       setErrorMsg(e?.response?.data?.error || "Nu am putut respinge întrebarea.");
@@ -1206,6 +1357,7 @@ export default function AdminDashboard() {
       setModerationActionLoading(`answer-approve-${answerId}`);
       await api.patch(`/admin/answers/${answerId}/approve`);
       setModerationNotice("Răspunsul a fost aprobat.");
+      setGlobalSuccess("Răspunsul a fost aprobat.");
       await fetchDashboardData();
     } catch (e) {
       setErrorMsg(e?.response?.data?.error || "Nu am putut aproba răspunsul.");
@@ -1229,6 +1381,7 @@ export default function AdminDashboard() {
         reason,
       });
       setModerationNotice("Răspunsul a fost respins.");
+      setGlobalSuccess("Răspunsul a fost respins.");
       await fetchDashboardData();
     } catch (e) {
       setErrorMsg(e?.response?.data?.error || "Nu am putut respinge răspunsul.");
@@ -1236,61 +1389,6 @@ export default function AdminDashboard() {
       setModerationActionLoading("");
     }
   };
-
-  const openOfficialAnswerModal = (question) => {
-    setOfficialAnswerQuestion(question || null);
-    setOfficialAnswerText("");
-    setOfficialAnswerError("");
-    setShowOfficialAnswerModal(true);
-  };
-
-  const closeOfficialAnswerModal = () => {
-    setShowOfficialAnswerModal(false);
-    setOfficialAnswerQuestion(null);
-    setOfficialAnswerText("");
-    setOfficialAnswerError("");
-  };
-
-  const handleAddOfficialAnswer = async () => {
-    if (!officialAnswerQuestion?.id) {
-      setOfficialAnswerError("Întrebarea selectată nu este validă.");
-      return;
-    }
-
-    const answer = officialAnswerText.trim();
-
-    if (answer.length < 2) {
-      setOfficialAnswerError("Răspunsul trebuie să aibă minim 2 caractere.");
-      return;
-    }
-
-    setOfficialAnswerError("");
-    setErrorMsg("");
-
-    try {
-      setOfficialAnswerBusy(true);
-
-      const res = await api.post(`/admin/questions/${officialAnswerQuestion.id}/answers`, {
-        answer,
-      });
-
-      setModerationNotice(
-        res.data?.message || "Răspunsul oficial a fost publicat."
-      );
-
-      closeOfficialAnswerModal();
-      await fetchDashboardData();
-    } catch (e) {
-      setOfficialAnswerError(
-        e?.response?.data?.error ||
-          e?.response?.data?.details?.[0]?.message ||
-          "Nu am putut publica răspunsul oficial."
-      );
-    } finally {
-      setOfficialAnswerBusy(false);
-    }
-  };
-
 
   if (adminCheckLoading) {
     return (
@@ -2264,19 +2362,7 @@ export default function AdminDashboard() {
                             </p>
                           </div>
 
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              type="button"
-                              className="gap-2"
-                              disabled={Boolean(moderationActionLoading)}
-                              onClick={() => openOfficialAnswerModal(question)}
-                            >
-                              <MessageSquare className="h-4 w-4" />
-                              Răspunde oficial
-                            </Button>
-
+                          <div className="flex gap-2">
                             <Button
                               size="sm"
                               type="button"
@@ -2635,9 +2721,12 @@ export default function AdminDashboard() {
             setShowOrderEditModal(false);
             setSelectedOrder(null);
             setOrderEditForm(emptyOrderEditForm);
+            clearModalFeedback();
           }}
           maxWidth="max-w-4xl"
         >
+          <ModalFeedback success={modalSuccessMsg} error={modalErrorMsg} />
+
           <div className="grid gap-6 md:grid-cols-2">
             <div className="rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
               <h4 className="mb-4 text-lg font-semibold text-white">
@@ -2832,6 +2921,7 @@ export default function AdminDashboard() {
                 setShowOrderEditModal(false);
                 setSelectedOrder(null);
                 setOrderEditForm(emptyOrderEditForm);
+                clearModalFeedback();
               }}
             >
               <X className="mr-2 h-4 w-4" />
@@ -2914,9 +3004,12 @@ export default function AdminDashboard() {
             setShowUserEditModal(false);
             setSelectedUser(null);
             setUserEditForm(emptyUserEditForm);
+            clearModalFeedback();
           }}
           maxWidth="max-w-3xl"
         >
+          <ModalFeedback success={modalSuccessMsg} error={modalErrorMsg} />
+
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Nume">
               <div className="relative">
@@ -2991,6 +3084,7 @@ export default function AdminDashboard() {
                 setShowUserEditModal(false);
                 setSelectedUser(null);
                 setUserEditForm(emptyUserEditForm);
+                clearModalFeedback();
               }}
             >
               <X className="mr-2 h-4 w-4" />
@@ -3057,13 +3151,78 @@ export default function AdminDashboard() {
 
             <div className="md:col-span-2 rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
               <h4 className="mb-4 text-lg font-semibold text-white">
-                Descriere
+                Descriere și conținut
               </h4>
 
-              <div className="space-y-3 text-sm text-slate-300">
+              <div className="space-y-4 text-sm text-slate-300">
                 <p><span className="text-slate-400">Descriere scurtă:</span> {selectedProduct.shortDescription || "—"}</p>
                 <p><span className="text-slate-400">Descriere completă:</span> {selectedProduct.description || "—"}</p>
+
+                <div>
+                  <div className="mb-2 font-semibold text-slate-200">Caracteristici</div>
+                  {selectedProduct.features?.length ? (
+                    <ul className="list-disc space-y-1 pl-5 text-slate-300">
+                      {selectedProduct.features.map((feature, idx) => (
+                        <li key={`feature-${idx}`}>{feature}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-slate-500">—</p>
+                  )}
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <div className="mb-2 font-semibold text-slate-200">Avantaje</div>
+                    {selectedProduct.pros?.length ? (
+                      <ul className="list-disc space-y-1 pl-5 text-slate-300">
+                        {selectedProduct.pros.map((pro, idx) => (
+                          <li key={`pro-${idx}`}>{pro}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-slate-500">—</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="mb-2 font-semibold text-slate-200">Dezavantaje</div>
+                    {selectedProduct.cons?.length ? (
+                      <ul className="list-disc space-y-1 pl-5 text-slate-300">
+                        {selectedProduct.cons.map((con, idx) => (
+                          <li key={`con-${idx}`}>{con}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-slate-500">—</p>
+                    )}
+                  </div>
+                </div>
               </div>
+            </div>
+
+            <div className="md:col-span-2 rounded-xl border border-slate-700/50 bg-slate-900/50 p-5">
+              <h4 className="mb-4 text-lg font-semibold text-white">
+                Specificații tehnice
+              </h4>
+
+              {selectedProduct.specifications?.length ? (
+                <div className="space-y-2 text-sm">
+                  {selectedProduct.specifications.map((spec, idx) => (
+                    <div
+                      key={spec.id || `${spec.name}-${idx}`}
+                      className="grid gap-2 rounded-lg border border-slate-700/40 bg-slate-800/30 p-3 md:grid-cols-2"
+                    >
+                      <span className="font-medium text-slate-400">{spec.name}</span>
+                      <span className="text-white">{spec.value}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500">
+                  Nu există specificații tehnice adăugate.
+                </p>
+              )}
             </div>
           </div>
 
@@ -3082,64 +3241,6 @@ export default function AdminDashboard() {
         </Modal>
       )}
 
-
-      {showOfficialAnswerModal && officialAnswerQuestion && (
-        <Modal
-          title="Răspuns oficial"
-          subtitle="Răspunsul adminului va fi publicat imediat și marcat ca Oficial."
-          onClose={closeOfficialAnswerModal}
-          maxWidth="max-w-3xl"
-        >
-          <div className="mb-4 rounded-xl border border-slate-700/50 bg-slate-900/60 p-4">
-            <div className="mb-2 text-xs uppercase tracking-wide text-slate-500">
-              Întrebare
-            </div>
-            <p className="text-sm text-slate-200">
-              {officialAnswerQuestion.question}
-            </p>
-            <p className="mt-2 text-xs text-slate-500">
-              Produs: {officialAnswerQuestion.product?.name || "—"}
-            </p>
-          </div>
-
-          {officialAnswerError && (
-            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-              {officialAnswerError}
-            </div>
-          )}
-
-          <Field label="Răspuns">
-            <TextArea
-              rows={6}
-              value={officialAnswerText}
-              onChange={(e) => setOfficialAnswerText(e.target.value)}
-              placeholder="Scrie răspunsul oficial aici..."
-            />
-          </Field>
-
-          <div className="mt-6 flex justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={closeOfficialAnswerModal}
-            >
-              <X className="mr-2 h-4 w-4" />
-              Anulează
-            </Button>
-
-            <Button
-              type="button"
-              onClick={handleAddOfficialAnswer}
-              disabled={officialAnswerBusy}
-              className="gap-2"
-            >
-              <Send className="h-4 w-4" />
-              {officialAnswerBusy ? "Se publică..." : "Publică răspuns oficial"}
-            </Button>
-          </div>
-        </Modal>
-      )}
-
       {(showProductEditModal || showCreateProductModal) && (
         <Modal
           title={showCreateProductModal ? "Adaugă produs nou" : "Editează produs"}
@@ -3153,9 +3254,12 @@ export default function AdminDashboard() {
             setShowCreateProductModal(false);
             setSelectedProduct(null);
             setProductForm(emptyProductForm);
+            clearModalFeedback();
           }}
           maxWidth="max-w-4xl"
         >
+          <ModalFeedback success={modalSuccessMsg} error={modalErrorMsg} />
+
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Nume">
               <div className="relative">
@@ -3282,6 +3386,121 @@ export default function AdminDashboard() {
               </Field>
             </div>
 
+            <div className="md:col-span-2">
+              <Field label="Caracteristici principale">
+                <TextArea
+                  rows={4}
+                  value={productForm.featuresText}
+                  placeholder="Scrie câte o caracteristică pe linie"
+                  onChange={(e) =>
+                    setProductForm((prev) => ({
+                      ...prev,
+                      featuresText: e.target.value,
+                    }))
+                  }
+                />
+              </Field>
+              <p className="mt-1 text-xs text-slate-500">
+                Se salvează în Product.features ca listă JSON.
+              </p>
+            </div>
+
+            <div>
+              <Field label="Avantaje">
+                <TextArea
+                  rows={4}
+                  value={productForm.prosText}
+                  placeholder="Câte un avantaj pe linie"
+                  onChange={(e) =>
+                    setProductForm((prev) => ({
+                      ...prev,
+                      prosText: e.target.value,
+                    }))
+                  }
+                />
+              </Field>
+            </div>
+
+            <div>
+              <Field label="Dezavantaje">
+                <TextArea
+                  rows={4}
+                  value={productForm.consText}
+                  placeholder="Câte un dezavantaj pe linie"
+                  onChange={(e) =>
+                    setProductForm((prev) => ({
+                      ...prev,
+                      consText: e.target.value,
+                    }))
+                  }
+                />
+              </Field>
+            </div>
+
+            <div className="md:col-span-2 rounded-xl border border-slate-700/50 bg-slate-900/50 p-4">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h4 className="font-semibold text-white">Specificații tehnice</h4>
+                  <p className="text-xs text-slate-500">
+                    Apar în tabul „Specificații” din pagina produsului.
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={addProductSpecRow}
+                >
+                  <Plus className="h-4 w-4" />
+                  Adaugă specificație
+                </Button>
+              </div>
+
+              {productForm.specifications.length > 0 ? (
+                <div className="space-y-3">
+                  {productForm.specifications.map((spec, index) => (
+                    <div
+                      key={spec.id || `spec-${index}`}
+                      className="grid gap-3 rounded-xl border border-slate-700/40 bg-slate-950/40 p-3 md:grid-cols-[1fr_1fr_auto]"
+                    >
+                      <TextInput
+                        type="text"
+                        value={spec.name}
+                        placeholder="Nume: Socket, Memorie, Garanție..."
+                        onChange={(e) =>
+                          handleProductSpecChange(index, "name", e.target.value)
+                        }
+                      />
+
+                      <TextInput
+                        type="text"
+                        value={spec.value}
+                        placeholder="Valoare: AM5, DDR5, 36 luni..."
+                        onChange={(e) =>
+                          handleProductSpecChange(index, "value", e.target.value)
+                        }
+                      />
+
+                      <Button
+                        type="button"
+                        variant="danger"
+                        size="sm"
+                        onClick={() => removeProductSpecRow(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-slate-700/60 bg-slate-950/30 p-4 text-sm text-slate-500">
+                  Nu ai adăugat nicio specificație.
+                </div>
+              )}
+            </div>
+
             <div className="md:col-span-2 flex items-center gap-3">
               <input
                 id="productActive"
@@ -3307,6 +3526,7 @@ export default function AdminDashboard() {
                 setShowCreateProductModal(false);
                 setSelectedProduct(null);
                 setProductForm(emptyProductForm);
+                clearModalFeedback();
               }}
             >
               <X className="mr-2 h-4 w-4" />

@@ -40,6 +40,12 @@ const updateUserSchema = z.object({
   roleName: z.string().optional(),
 });
 
+const productSpecificationSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  value: z.string().trim().min(1).max(500),
+  sortOrder: z.number().int().min(0).optional(),
+});
+
 const productPayloadSchema = z.object({
   name: z.string().min(2),
   brand: z.string().min(1),
@@ -52,6 +58,10 @@ const productPayloadSchema = z.object({
   isActive: z.boolean().optional(),
   shortDescription: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
+  features: z.array(z.string().trim().min(1).max(500)).optional(),
+  pros: z.array(z.string().trim().min(1).max(500)).optional(),
+  cons: z.array(z.string().trim().min(1).max(500)).optional(),
+  specifications: z.array(productSpecificationSchema).optional(),
 });
 
 const updateProductSchema = z.object({
@@ -66,6 +76,10 @@ const updateProductSchema = z.object({
   isActive: z.boolean().optional(),
   shortDescription: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
+  features: z.array(z.string().trim().min(1).max(500)).optional(),
+  pros: z.array(z.string().trim().min(1).max(500)).optional(),
+  cons: z.array(z.string().trim().min(1).max(500)).optional(),
+  specifications: z.array(productSpecificationSchema).optional(),
 });
 
 const rejectModerationSchema = z.object({

@@ -16,6 +16,7 @@ import {
 import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { resolveProductImage } from "../lib/resolveProductImage";
+import Seo from "../components/Seo";
 
 const GUEST_CART_KEY = "configexp_guest_cart_v1";
 const GUEST_WISHLIST_KEY = "configexp_guest_wishlist_v1";
@@ -561,7 +562,21 @@ export default function Components() {
   );
 
   return (
-    <div className="min-h-screen overflow-x-hidden px-4 py-8 sm:px-6 sm:py-12">
+    <>
+      <Seo
+        title={
+          selectedCategory !== "Toate"
+            ? `Componente ${selectedCategory}`
+            : "Componente PC"
+        }
+        description={
+          selectedCategory !== "Toate"
+            ? `Explorează produse din categoria ${selectedCategory} pe ConfigEXP. Compară componente PC, verifică prețul, stocul și detaliile tehnice.`
+            : "Explorează componente PC pe ConfigEXP: procesoare, plăci video, memorii RAM, SSD-uri, surse, carcase și plăci de bază pentru build-ul tău."
+        }
+      />
+
+      <div className="min-h-screen overflow-x-hidden px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-7xl">
         <motion.div
           initial={{ opacity: 0, y: 18 }}
@@ -974,6 +989,7 @@ export default function Components() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

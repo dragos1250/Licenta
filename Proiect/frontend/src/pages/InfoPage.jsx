@@ -20,6 +20,7 @@ import {
   Package,
   Wrench,
 } from "lucide-react";
+import Seo from "../components/Seo";
 
 export default function InfoPage() {
   const location = useLocation();
@@ -40,7 +41,13 @@ export default function InfoPage() {
   }, [location]);
 
   return (
-    <div className="min-h-screen px-6 py-12">
+    <>
+      <Seo
+        title="Informații și suport"
+        description="Află informații despre ConfigEXP: contact, livrare, termeni și condiții, confidențialitate, cookie-uri, garanții și întrebări frecvente."
+      />
+
+      <div className="min-h-screen px-6 py-12">
       <div className="mx-auto max-w-4xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -746,7 +753,8 @@ export default function InfoPage() {
           </ul>
         </Section>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

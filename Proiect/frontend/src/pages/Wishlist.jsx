@@ -5,6 +5,7 @@ import { Heart, ShoppingCart, X, Share2, Sparkles } from "lucide-react";
 import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { resolveProductImage } from "../lib/resolveProductImage";
+import Seo from "../components/Seo";
 
 const VAT_RATE = 0.21;
 
@@ -225,27 +226,42 @@ export default function Wishlist() {
 
   if (!isAuthLoading && !isAuthenticated) {
     return (
-      <div className="min-h-screen px-4 py-8 sm:px-6 sm:py-12">
-        <div className="mx-auto max-w-7xl rounded-2xl border border-slate-700/50 bg-slate-900/40 p-6 text-center text-slate-300 sm:p-10">
-          <h1 className="mb-2 text-2xl font-bold text-white">
-            Wishlist indisponibil
-          </h1>
-          <p className="mb-6 text-slate-400">
-            Wishlist-ul este disponibil după autentificare.
-          </p>
-          <Button
-            onClick={() => navigate("/login")}
-            className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30"
-          >
-            Conectare
-          </Button>
+      <>
+        <Seo
+          title="Wishlist"
+          description="Autentifică-te pentru a vedea produsele salvate în wishlist-ul tău ConfigEXP."
+          noIndex
+        />
+
+        <div className="min-h-screen px-4 py-8 sm:px-6 sm:py-12">
+          <div className="mx-auto max-w-7xl rounded-2xl border border-slate-700/50 bg-slate-900/40 p-6 text-center text-slate-300 sm:p-10">
+            <h1 className="mb-2 text-2xl font-bold text-white">
+              Wishlist indisponibil
+            </h1>
+            <p className="mb-6 text-slate-400">
+              Wishlist-ul este disponibil după autentificare.
+            </p>
+            <Button
+              onClick={() => navigate("/login")}
+              className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30"
+            >
+              Conectare
+            </Button>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden px-4 py-8 sm:px-6 sm:py-12">
+    <>
+      <Seo
+        title="Wishlist"
+        description="Vezi și gestionează produsele salvate în lista ta de dorințe ConfigEXP."
+        noIndex
+      />
+
+      <div className="min-h-screen overflow-x-hidden px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-7xl">
         <motion.div
           initial={{ opacity: 0, y: 18 }}
@@ -509,6 +525,7 @@ export default function Wishlist() {
           </motion.div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

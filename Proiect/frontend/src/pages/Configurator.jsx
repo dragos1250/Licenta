@@ -19,6 +19,7 @@ import {
 import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { resolveProductImage } from "../lib/resolveProductImage";
+import Seo from "../components/Seo";
 
 const VAT_RATE = 0.21;
 const GUEST_CART_KEY = "configexp_guest_cart_v1";
@@ -410,7 +411,13 @@ export default function Configurator() {
   };
 
   return (
-    <div className="min-h-screen px-4 py-8 sm:px-6 sm:py-12">
+    <>
+      <Seo
+        title="Configurator PC"
+        description="Construiește pas cu pas un PC compatibil pe ConfigEXP. Alege procesor, placă video, memorie RAM, stocare, sursă, carcasă și verifică automat compatibilitatea componentelor."
+      />
+
+      <div className="min-h-screen px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-7xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -831,6 +838,7 @@ export default function Configurator() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

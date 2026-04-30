@@ -15,6 +15,7 @@ import {
 import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { resolveProductImage } from "../lib/resolveProductImage";
+import Seo from "../components/Seo";
 
 const GUEST_CART_KEY = "configexp_guest_cart_v1";
 const VAT_RATE = 0.21;
@@ -304,7 +305,14 @@ export default function Cart() {
   const pageLoading = isAuthLoading || (isAuthenticated && loadingDb);
 
   return (
-    <div className="min-h-screen overflow-x-hidden px-4 py-8 sm:px-6 sm:py-12">
+    <>
+      <Seo
+        title="Coș"
+        description="Vezi produsele adăugate în coșul tău ConfigEXP și continuă către finalizarea comenzii."
+        noIndex
+      />
+
+      <div className="min-h-screen overflow-x-hidden px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-7xl">
         <motion.div
           initial={{ opacity: 0, y: 18 }}
@@ -602,6 +610,7 @@ export default function Cart() {
           </motion.div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

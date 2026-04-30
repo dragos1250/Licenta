@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
+import Seo from "../components/Seo";
 import {
   Sparkles,
   Wrench,
@@ -16,7 +17,13 @@ import {
 
 export default function Home() {
   return (
-    <div className="relative overflow-hidden">
+    <>
+      <Seo
+        title="Home"
+        description="Configurează PC-ul potrivit pentru gaming, productivitate sau creație cu ajutorul ConfigEXP. Alege componente compatibile, folosește configuratorul AI și comandă rapid piesele potrivite."
+      />
+
+      <div className="relative overflow-hidden">
       {/* Hero Section */}
       <section className="relative px-6 pb-20 pt-16">
         {/* Background Effects */}
@@ -301,6 +308,7 @@ export default function Home() {
           </motion.div>
         </div>
       </section>
-    </div>
+      </div>
+    </>
   );
 }

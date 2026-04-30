@@ -14,6 +14,7 @@ import {
 import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
+import Seo from "../components/Seo";
 
 const AI_CONVERSATION_STORAGE_KEY = "configexp_ai_chat_only_v1";
 
@@ -320,7 +321,14 @@ export function AIConfiguratorPage() {
     : "Limită AI disponibilă după autentificare";
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-950">
+    <>
+      <Seo
+        title="Configurator AI"
+        description="Primește recomandări AI pentru componente PC și build-uri în funcție de buget, jocuri și preferințe hardware."
+        noIndex
+      />
+
+      <div className="flex min-h-screen flex-col bg-slate-950">
       <div className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-xl">
         <div className="mx-auto max-w-5xl px-6 py-4">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -525,7 +533,8 @@ export function AIConfiguratorPage() {
           </p>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

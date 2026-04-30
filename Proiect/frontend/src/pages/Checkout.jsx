@@ -21,6 +21,7 @@ import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-
 import { loadStripe } from "@stripe/stripe-js";
 import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
+import Seo from "../components/Seo";
 
 const VAT_RATE = 0.21;
 const GUEST_CART_KEY = "configexp_guest_cart_v1";
@@ -568,28 +569,76 @@ export default function Checkout() {
     }, 100);
   };
 
+  const getOrderFromCheckoutResponse = (data) => {
+    if (!data) return null;
+    if (data.order && typeof data.order === "object") return data.order;
+    if (data.createdOrder && typeof data.createdOrder === "object") {
+      return data.createdOrder;
+    }
+    if (data.id || data.orderNumber) return data;
+    return null;
+  };
+
+  const navigateToOrderConfirmation = (order) => {
+    const orderId = order?.id;
+    const orderNumber = order?.orderNumber;
+
+    const checkoutSnapshot = {
+      shippingMethod: order?.shippingMethod || shippingMethodApi,
+      paymentMethod: order?.paymentMethod || paymentMethodApi,
+      customerEmail: order?.customerEmail || formData.email.trim(),
+      totalRon: Number(order?.totalRon ?? total ?? 0),
+      itemsCount: Array.isArray(order?.items) ? order.items.length : cartItems.length,
+    };
+
+    const query = orderId
+      ? `?orderId=${encodeURIComponent(orderId)}`
+      : orderNumber
+      ? `?orderNumber=${encodeURIComponent(
+          orderNumber
+        )}&shippingMethod=${encodeURIComponent(checkoutSnapshot.shippingMethod)}`
+      : `?shippingMethod=${encodeURIComponent(checkoutSnapshot.shippingMethod)}`;
+
+    navigate(`/order-confirmation${query}`, {
+      replace: true,
+      state: {
+        order: order
+          ? {
+              ...order,
+              shippingMethod: order.shippingMethod || checkoutSnapshot.shippingMethod,
+              paymentMethod: order.paymentMethod || checkoutSnapshot.paymentMethod,
+            }
+          : null,
+        orderId,
+        checkout: checkoutSnapshot,
+      },
+    });
+  };
+
   const finalizePaidOrder = async () => {
     const payload = buildCheckoutPayload();
 
     if (!isAuthLoading && isAuthenticated) {
-      await api.post("/orders/checkout", payload);
+      const res = await api.post("/orders/checkout", payload);
+      const order = getOrderFromCheckoutResponse(res.data);
+
       window.dispatchEvent(new Event("cart:updated"));
-      alert("Plata a fost efectuată și comanda a fost plasată cu succes! 🎉");
-      navigate("/account");
+      navigateToOrderConfirmation(order);
       return;
     }
 
     const items = buildGuestItemsPayload();
 
-    await api.post("/orders/guest-checkout", {
+    const res = await api.post("/orders/guest-checkout", {
       ...payload,
       items,
     });
 
+    const order = getOrderFromCheckoutResponse(res.data);
+
     clearGuestCart();
     window.dispatchEvent(new Event("cart:updated"));
-    alert("Plata a fost efectuată și comanda a fost plasată cu succes! 🎉");
-    navigate("/");
+    navigateToOrderConfirmation(order);
   };
 
   const handleSubmit = async (e) => {
@@ -620,24 +669,26 @@ export default function Checkout() {
       const payload = buildCheckoutPayload();
 
       if (!isAuthLoading && isAuthenticated) {
-        await api.post("/orders/checkout", payload);
+        const res = await api.post("/orders/checkout", payload);
+        const order = getOrderFromCheckoutResponse(res.data);
+
         window.dispatchEvent(new Event("cart:updated"));
-        alert("Comanda a fost plasată cu succes! 🎉");
-        navigate("/account");
+        navigateToOrderConfirmation(order);
         return;
       }
 
       const items = buildGuestItemsPayload();
 
-      await api.post("/orders/guest-checkout", {
+      const res = await api.post("/orders/guest-checkout", {
         ...payload,
         items,
       });
 
+      const order = getOrderFromCheckoutResponse(res.data);
+
       clearGuestCart();
       window.dispatchEvent(new Event("cart:updated"));
-      alert("Comanda a fost plasată cu succes! 🎉");
-      navigate("/");
+      navigateToOrderConfirmation(order);
     } catch (e) {
       setErrorMsg(e?.response?.data?.error || e?.message || "Checkout eșuat.");
     } finally {
@@ -646,7 +697,14 @@ export default function Checkout() {
   };
 
   return (
-    <div className="min-h-screen px-6 py-12">
+    <>
+      <Seo
+        title="Checkout"
+        description="Finalizează comanda pentru componentele PC alese pe ConfigEXP."
+        noIndex
+      />
+
+      <div className="min-h-screen px-6 py-12">
       <div className="mx-auto max-w-7xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -1378,6 +1436,7 @@ export default function Checkout() {
           </form>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import api from "../lib/api";
+import Seo from "../components/Seo";
 
 function Badge({ className = "", children }) {
   return (
@@ -1297,7 +1298,14 @@ export default function Account() {
   }, [wishlistLoading, wishlistError, wishlistStats.listsCount]);
 
   return (
-    <div className="min-h-screen overflow-x-hidden px-4 py-8 sm:px-6 sm:py-12">
+    <>
+      <Seo
+        title="Contul meu"
+        description="Gestionează comenzile, configurațiile salvate, profilul și adresele contului tău ConfigEXP."
+        noIndex
+      />
+
+      <div className="min-h-screen overflow-x-hidden px-4 py-8 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-7xl">
         <motion.div
           initial={{ opacity: 0, y: 18 }}
@@ -2578,6 +2586,7 @@ export default function Account() {
           </div>
         </Modal>
       )}
-    </div>
+      </div>
+    </>
   );
 }

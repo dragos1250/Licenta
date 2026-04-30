@@ -14,6 +14,7 @@ import {
   XCircle,
 } from "lucide-react";
 import api from "../lib/api";
+import Seo from "../components/Seo";
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -95,7 +96,14 @@ export default function ResetPasswordPage() {
   ];
 
   return (
-    <div className="relative flex min-h-[calc(100vh-80px)] items-center justify-center px-6 py-12">
+    <>
+      <Seo
+        title="Resetare parolă"
+        description="Setează o parolă nouă pentru contul tău ConfigEXP."
+        noIndex
+      />
+
+      <div className="relative flex min-h-[calc(100vh-80px)] items-center justify-center px-6 py-12">
       <div className="absolute inset-0 -z-10">
         <div className="absolute left-1/4 top-1/4 h-96 w-96 rounded-full bg-cyan-500/10 blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 h-96 w-96 rounded-full bg-purple-500/10 blur-3xl" />
@@ -363,6 +371,7 @@ export default function ResetPasswordPage() {
           </div>
         </motion.div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
