@@ -1,0 +1,9 @@
+Copyright (c) 2026 Dragos Răducanu Dragoș Mihai. All rights reserved.
+
+This repository and its contents are made publicly available for portfolio, academic, demonstration, and review purposes only.
+
+No permission is granted to copy, modify, distribute, sublicense, sell, host, deploy, publish, or use this software, source code, documentation, or related materials, in whole or in part, without prior written permission from the copyright holder.
+
+Unauthorized use, reproduction, redistribution, commercial use, or deployment of this project is strictly prohibited.
+
+For permission requests, contact the repository owner through GitHub.
