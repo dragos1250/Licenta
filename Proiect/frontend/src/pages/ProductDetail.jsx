@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import {
   Star,
   ShoppingCart,
@@ -252,7 +252,10 @@ function getRatingDistribution(reviewsList) {
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isAuthenticated, isAuthLoading } = useAuth();
+
+  const componentsBackPath = location.state?.fromComponents || "/components";
 
   const [activeTab, setActiveTab] = useState("description");
   const [selectedImage, setSelectedImage] = useState(0);
@@ -293,6 +296,11 @@ export default function ProductDetail() {
   const [answerError, setAnswerError] = useState("");
   const [answerSubmitting, setAnswerSubmitting] = useState(false);
 
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    setActiveTab("description");
+  }, [id]);
+
   const fetchProduct = async () => {
     if (!id) return;
 
@@ -312,14 +320,7 @@ export default function ProductDetail() {
     }
   };
 
-  useLayoutEffect(() => {
-    if (typeof window === "undefined") return;
-
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-  }, [id]);
-
   useEffect(() => {
-    setActiveTab("description");
     fetchProduct();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -812,7 +813,7 @@ export default function ProductDetail() {
             {errorMsg || "Acest produs nu există."}
           </p>
           <Button
-            onClick={() => navigate("/components")}
+            onClick={() => navigate(componentsBackPath)}
             className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30"
           >
             Înapoi la componente
@@ -856,12 +857,12 @@ export default function ProductDetail() {
             Home
           </Link>
           <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 sm:h-4 sm:w-4" />
-          <Link to="/components" className="flex-shrink-0 hover:text-cyan-400">
+          <Link to={componentsBackPath} className="flex-shrink-0 hover:text-cyan-400">
             Componente
           </Link>
           <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 sm:h-4 sm:w-4" />
           <Link
-            to={`/components/${encodeURIComponent(product.category || "Toate")}`}
+            to={componentsBackPath}
             className="max-w-[120px] flex-shrink-0 truncate hover:text-cyan-400 sm:max-w-none"
           >
             {product.category || "Categorie"}

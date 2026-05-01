@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "motion/react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   Filter,
   SlidersHorizontal,
@@ -29,6 +29,10 @@ const formatRon = (n) =>
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+function getPageFromSearchParams(searchParams) {
+  const value = Number(searchParams.get("page") || 1);
+  return Number.isInteger(value) && value > 0 ? value : 1;
+}
 
 function loadGuestCart() {
   try {
@@ -162,6 +166,7 @@ function normalizeProduct(product) {
 export default function Components() {
   const navigate = useNavigate();
   const { category: categoryParam } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isAuthenticated, isAuthLoading } = useAuth();
 
   const [viewMode, setViewMode] = useState("grid");
@@ -190,9 +195,32 @@ export default function Components() {
   const [wishlistIds, setWishlistIds] = useState(() => loadGuestWishlistIds());
   const [wishlistBusy, setWishlistBusy] = useState(false);
 
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => getPageFromSearchParams(searchParams));
   const pageSize = 9;
   const didMountPageScroll = useRef(false);
+  const didMountFilterReset = useRef(false);
+
+  useEffect(() => {
+    const pageFromUrl = getPageFromSearchParams(searchParams);
+    setPage((current) => (current === pageFromUrl ? current : pageFromUrl));
+  }, [searchParams]);
+
+  useEffect(() => {
+    setSearchParams(
+      (currentParams) => {
+        const nextParams = new URLSearchParams(currentParams);
+
+        if (page <= 1) {
+          nextParams.delete("page");
+        } else {
+          nextParams.set("page", String(page));
+        }
+
+        return nextParams;
+      },
+      { replace: true }
+    );
+  }, [page, setSearchParams]);
 
   useEffect(() => {
     if (!didMountPageScroll.current) {
@@ -263,6 +291,11 @@ export default function Components() {
   }, [categoryParam]);
 
   useEffect(() => {
+    if (!didMountFilterReset.current) {
+      didMountFilterReset.current = true;
+      return;
+    }
+
     setPage(1);
   }, [
     selectedCategory,
@@ -349,6 +382,12 @@ export default function Components() {
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
   const pageItems = filteredProducts.slice((page - 1) * pageSize, page * pageSize);
 
+  useEffect(() => {
+    if (!loading && page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [loading, page, totalPages]);
+
   const handleCategoryClick = (cat) => {
     setSelectedCategory(cat);
     setBrandFilters([]);
@@ -391,7 +430,11 @@ export default function Components() {
   };
 
   const openProductDetail = (productId) => {
-    navigate(`/products/${productId}`);
+    navigate(`/products/${productId}`, {
+      state: {
+        fromComponents: `${window.location.pathname}${window.location.search}`,
+      },
+    });
   };
 
   const addToCart = async (product) => {
