@@ -50,16 +50,41 @@ const deleteAccountSchema = z.object({
   currentPassword: z.string().optional(),
 });
 
-function getCookieOptions() {
-  const isProd = process.env.NODE_ENV === "production";
+function isProductionLike() {
+  return (
+    process.env.NODE_ENV === "production" ||
+    String(process.env.CLIENT_URL || "").startsWith("https://")
+  );
+}
 
-  return {
+function getCookieDomain() {
+  const value = String(process.env.COOKIE_DOMAIN || "").trim();
+  return value || undefined;
+}
+
+function getCookieOptions() {
+  const isProd = isProductionLike();
+
+  const options = {
     httpOnly: true,
     secure: isProd,
-    sameSite: isProd ? "none" : "lax",
+    sameSite: "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: "/",
   };
+
+  const domain = getCookieDomain();
+
+  if (domain) {
+    options.domain = domain;
+  }
+
+  return options;
+}
+
+function getClearCookieOptions() {
+  const { maxAge, ...options } = getCookieOptions();
+  return options;
 }
 
 export class AuthController {
@@ -252,12 +277,7 @@ export class AuthController {
         parsed.data
       );
 
-      res.clearCookie("access_token", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        path: "/",
-      });
+      res.clearCookie("access_token", getClearCookieOptions());
 
       return res.json(result);
     } catch (error) {
