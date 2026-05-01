@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Filter,
@@ -192,6 +192,16 @@ export default function Components() {
 
   const [page, setPage] = useState(1);
   const pageSize = 9;
+  const didMountPageScroll = useRef(false);
+
+  useEffect(() => {
+    if (!didMountPageScroll.current) {
+      didMountPageScroll.current = true;
+      return;
+    }
+
+    window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+  }, [page]);
 
   const fetchData = async () => {
     setLoading(true);

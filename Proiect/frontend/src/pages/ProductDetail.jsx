@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   Star,
@@ -312,7 +312,14 @@ export default function ProductDetail() {
     }
   };
 
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [id]);
+
   useEffect(() => {
+    setActiveTab("description");
     fetchProduct();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);

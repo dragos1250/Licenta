@@ -87,6 +87,33 @@ function getClearCookieOptions() {
   return options;
 }
 
+function clearAuthCookie(res) {
+  const currentOptions = getClearCookieOptions();
+
+  // Cookie-ul curent, inclusiv domain=.configexp.ro dacă este setat.
+  res.clearCookie("access_token", currentOptions);
+
+  // Curăță și cookie-uri vechi create înainte de COOKIE_DOMAIN.
+  const noDomainOptions = { ...currentOptions };
+  delete noDomainOptions.domain;
+  res.clearCookie("access_token", noDomainOptions);
+
+  // Curăță și varianta veche cu SameSite=None, dacă a existat pe browser.
+  const legacyCrossSiteOptions = {
+    ...noDomainOptions,
+    secure: true,
+    sameSite: "none",
+  };
+  res.clearCookie("access_token", legacyCrossSiteOptions);
+
+  if (currentOptions.domain) {
+    res.clearCookie("access_token", {
+      ...currentOptions,
+      sameSite: "none",
+    });
+  }
+}
+
 export class AuthController {
   constructor(authService) {
     this.authService = authService;
@@ -277,7 +304,7 @@ export class AuthController {
         parsed.data
       );
 
-      res.clearCookie("access_token", getClearCookieOptions());
+      clearAuthCookie(res);
 
       return res.json(result);
     } catch (error) {
@@ -295,12 +322,7 @@ export class AuthController {
   };
 
   logout = async (req, res) => {
-    res.clearCookie("access_token", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      path: "/",
-    });
+    clearAuthCookie(res);
 
     return res.json({ message: "Delogat cu succes." });
   };
